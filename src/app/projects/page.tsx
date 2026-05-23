@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
 
 function AddProjectIcon({ className }: { className?: string }) {
   return (
@@ -50,13 +51,6 @@ const PROJECT_TILES: ProjectTile[] = [
     person: "Morgan Lee",
   },
 ];
-
-/**
- * Slightly inset left of Navbar inner edge (~10px) so grid sits a hair left;
- * right keeps full navbar gutter. Includes border + nav padding terms.
- */
-const NAV_ALIGN_PAD =
-  "pl-[calc(max(20px,env(safe-area-inset-left,0px))+1px+1rem-10px)] pr-[calc(max(20px,env(safe-area-inset-right,0px))+1px+1rem)] sm:pl-[calc(max(20px,env(safe-area-inset-left,0px))+1px+1.5rem-10px)] sm:pr-[calc(max(20px,env(safe-area-inset-right,0px))+1px+1.5rem)]";
 
 export default function ProjectsPage() {
   const [selected, setSelected] = useState<(typeof CATEGORIES)[number]>(
