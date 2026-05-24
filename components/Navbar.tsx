@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MobileMenu, type NavLinkItem } from "./MobileMenu";
+import { ProfileNavLink } from "./ProfileNavLink";
 
 const PRIMARY_LINKS: NavLinkItem[] = [
   { href: "/projects", label: "Projects" },
@@ -14,6 +15,7 @@ const PRIMARY_LINKS: NavLinkItem[] = [
 const MOBILE_NAV_LINKS: NavLinkItem[] = [
   { href: "/", label: "Home" },
   ...PRIMARY_LINKS,
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export default function Navbar() {
@@ -42,7 +44,8 @@ export default function Navbar() {
             Hopamine
           </span>
         </Link>
-        <div className="flex shrink-0 items-center md:gap-2">
+        <div className="flex shrink-0 items-center gap-2 md:gap-3">
+          <ProfileNavLink className="md:hidden" />
           <MobileMenu
             links={MOBILE_NAV_LINKS}
             ticketHref="/001"
@@ -72,6 +75,9 @@ export default function Navbar() {
             >
               Directory
             </Link>
+          </li>
+          <li className="flex items-center">
+            <ProfileNavLink />
           </li>
           <li>
             <a

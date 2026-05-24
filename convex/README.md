@@ -1,3 +1,17 @@
+# Convex backend
+
+Auth is wired for **Clerk → Convex** JWTs (`convex/auth.config.ts` reads `CLERK_DOMAIN`).
+
+Setup checklist:
+
+1. **Clerk** — Create JWT template **`convex`** (issuer must match Convex config). See [Convex + Clerk](https://docs.convex.dev/auth/clerk).
+2. **Env** — Fill `.env.local` from [`.env.example`](../.env.example): `NEXT_PUBLIC_CONVEX_URL`, `CLERK_DOMAIN`, Clerk keys.
+3. **Dev** — `npm run dev:all` (or two terminals: `npm run dev` + `npm run dev:convex`).
+
+Then write functions below.
+
+---
+
 # Welcome to your Convex functions directory!
 
 Write your Convex functions here.

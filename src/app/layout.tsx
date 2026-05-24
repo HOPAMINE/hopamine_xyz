@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import Navbar from "../../components/Navbar";
+import ClientLayout from "./client-layout";
 import { instrumentSerif, robotoMono } from "../../fonts";
 import "./globals.css";
 
@@ -31,8 +31,7 @@ export default function RootLayout({
       className={`${instrumentSerif.variable} ${robotoMono.variable} m-0 h-dvh overscroll-none bg-accent-navbar p-0 antialiased md:bg-white`}
     >
       <body className="m-0 flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-accent-navbar p-0 font-serif text-neutral-900 md:bg-white">
-        <Navbar />
-        {children}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
