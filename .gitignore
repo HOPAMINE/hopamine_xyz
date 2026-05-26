@@ -65,3 +65,6 @@ convex/_generated/ai/ai-files.state.json
 
 # Convex local dev overrides (commit convex/_generated for types)
 .env.local
+
+# clerk configuration (can include secrets)
+/.clerk/
