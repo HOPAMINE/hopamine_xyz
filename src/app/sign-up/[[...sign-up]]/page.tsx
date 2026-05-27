@@ -106,7 +106,7 @@ export default function SignUpPage() {
             The Hopamine Network.
           </p>
         </div>
-        <SignUp routing="path" path="/sign-up" appearance={appearance} />
+        <SignUp routing="path" path="/sign-up" appearance={appearance} forceRedirectUrl="/onboard" />
       </div>
     </div>
   );
