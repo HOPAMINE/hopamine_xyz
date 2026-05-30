@@ -1,47 +1,15 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { useMutation } from "convex/react"
+import { useMutation, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { PROJECT_TILES } from "@/lib/projectTiles"
+import Lottie from "lottie-react"
+import globeAnimation from "../../../public/globe.json"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const LOCATION_SUGGESTIONS = [
-  "San Francisco",
-  "New York",
-  "Austin",
-  "Berlin",
-  "London",
-  "Tokyo",
-  "Toronto",
-  "Sydney",
-  "Seattle",
-  "Portland",
-  "Chicago",
-  "Los Angeles",
-  "Boston",
-  "Denver",
-  "Miami",
-  "Amsterdam",
-  "Barcelona",
-  "Paris",
-  "São Paulo",
-  "Mexico City",
-  "Cape Town",
-  "Nairobi",
-  "Singapore",
-  "Taipei",
-  "Bangalore",
-  "Lagos",
-  "Cairo",
-  "Stockholm",
-  "Helsinki",
-  "Zurich",
-  "Somewhere else",
-]
 
 const BADGES = [
   { id: "seedcaster",  emoji: "🌱", title: "THE SEEDCASTER",  quote: "They plant what others haven't imagined yet." },
@@ -89,79 +57,143 @@ function AutoTextarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={3}
-      className="w-full resize-none overflow-hidden bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none leading-relaxed border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
+      className="w-full resize-none overflow-hidden bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none leading-relaxed border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
     />
   )
 }
 
+async function fetchCitySuggestions(input: string): Promise<{ id: string; label: string }[]> {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY
+  if (!key || !input.trim()) return []
+  const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key },
+    body: JSON.stringify({ input, includedPrimaryTypes: ["locality", "administrative_area_level_3"] }),
+  })
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.suggestions ?? []).map((s: { placePrediction: { placeId: string; text: { text: string } } }) => ({
+    id: s.placePrediction.placeId,
+    label: s.placePrediction.text.text,
+  }))
+}
+
 function LocationCombobox({
-  value,
-  onChange,
+  onSelect,
   onSubmit,
 }: {
-  value: string
-  onChange: (v: string) => void
+  onSelect: (v: string) => void
   onSubmit: () => void
 }) {
+  const [value, setValue] = useState("")
+  const [suggestions, setSuggestions] = useState<{ id: string; label: string }[]>([])
   const [open, setOpen] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  const filtered = value.trim()
-    ? LOCATION_SUGGESTIONS.filter((s) => s.toLowerCase().includes(value.toLowerCase()))
-    : LOCATION_SUGGESTIONS
+  const listRef = useRef<HTMLUListElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener("mousedown", handleClick)
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
+
+  const fetchSuggestions = useCallback((input: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      const results = await fetchCitySuggestions(input)
+      setSuggestions(results)
+      setHighlightedIndex(-1)
+      setOpen(results.length > 0)
+    }, 250)
+  }, [])
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setValue(e.target.value)
+    fetchSuggestions(e.target.value)
+  }
+
+  function handleSelect(label: string) {
+    setValue(label)
+    setSuggestions([])
+    setOpen(false)
+    setHighlightedIndex(-1)
+    onSelect(label)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      if (!open || suggestions.length === 0) return
+      const next = Math.min(highlightedIndex + 1, suggestions.length - 1)
+      setHighlightedIndex(next)
+      listRef.current?.children[next]?.scrollIntoView({ block: "nearest" })
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      if (!open || suggestions.length === 0) return
+      const next = Math.max(highlightedIndex - 1, 0)
+      setHighlightedIndex(next)
+      listRef.current?.children[next]?.scrollIntoView({ block: "nearest" })
+    } else if (e.key === "Enter") {
+      if (open && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        e.preventDefault()
+        handleSelect(suggestions[highlightedIndex].label)
+        onSubmit()
+      } else if (value.trim()) {
+        setOpen(false)
+        onSelect(value)
+        onSubmit()
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false)
+      setHighlightedIndex(-1)
+    }
+  }
 
   return (
     <div ref={containerRef} className="relative mb-4">
       <input
         autoFocus
         value={value}
-        onChange={(e) => { onChange(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && value.trim()) { setOpen(false); onSubmit() }
-          if (e.key === "Escape") setOpen(false)
-        }}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
         placeholder="Type your city…"
-        className="w-full bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-activedescendant={highlightedIndex >= 0 ? `city-option-${highlightedIndex}` : undefined}
+        className="w-full bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2"
       />
       <AnimatePresence>
         {open && (
           <motion.ul
+            ref={listRef}
+            role="listbox"
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
             className="absolute z-20 top-full left-0 right-0 bg-white border border-neutral-200 shadow-lg mt-1 max-h-52 overflow-y-auto"
           >
-            {filtered.length > 0 ? (
-              filtered.map((loc) => (
-                <li
-                  key={loc}
-                  onMouseDown={(e) => { e.preventDefault(); onChange(loc); setOpen(false) }}
-                  className={`px-4 py-2.5 font-mono text-sm cursor-pointer transition-colors ${
-                    loc === value
-                      ? "bg-accent-navbar text-white"
-                      : "text-neutral-600 hover:bg-accent-navbar hover:text-white"
-                  }`}
-                >
-                  {loc}
-                </li>
-              ))
-            ) : (
-              <li className="px-4 py-2.5 font-mono text-sm text-neutral-400 italic">
-                Press Enter to use &ldquo;{value}&rdquo;
+            {suggestions.map(({ id, label }, index) => (
+              <li
+                key={id}
+                id={`city-option-${index}`}
+                role="option"
+                aria-selected={index === highlightedIndex}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(label) }}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                className={`px-4 py-2.5 font-mono text-sm cursor-pointer transition-colors ${
+                  index === highlightedIndex
+                    ? "bg-accent-navbar text-white"
+                    : "text-neutral-600 hover:bg-accent-navbar hover:text-white"
+                }`}
+              >
+                {label}
               </li>
-            )}
+            ))}
           </motion.ul>
         )}
       </AnimatePresence>
@@ -174,6 +206,7 @@ function LocationCombobox({
 export default function OnboardPage() {
   const router = useRouter()
   const completeOnboarding = useMutation(api.users.completeOnboarding)
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
 
   // Submission state
   const [submitting, setSubmitting] = useState(false)
@@ -279,7 +312,7 @@ export default function OnboardPage() {
 
   // The actual Convex commit happens here
   async function finishOnboarding() {
-    if (submitting) return
+    if (submitting || !isAuthenticated) return
     setSubmitting(true)
     setSubmitError("")
     try {
@@ -326,9 +359,25 @@ export default function OnboardPage() {
   return (
     <div
       ref={topRef}
-      className="fixed inset-0 z-[100] overflow-y-auto bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)]"
+      className="fixed inset-0 z-0 overflow-y-auto bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)]"
     >
-      <div className="flex justify-center px-5 pb-48 pt-14">
+      {/* Globe background */}
+      <div
+        className="pointer-events-none fixed"
+        style={{
+          top: "50%",
+          left: "50%",
+          width: "min(90vw, 90vh)",
+          height: "min(90vw, 90vh)",
+          transform: "translate(-5%, -20%) rotate(30deg)",
+          opacity: 0.3,
+          zIndex: 0,
+        }}
+      >
+        <Lottie animationData={globeAnimation} loop autoplay initialSegment={[0, 151]} />
+      </div>
+
+      <div className="relative z-10 flex justify-center px-5 pb-48 pt-28 md:pt-32">
         <AnimatePresence mode="wait">
 
           {/* ══ Confirmation screen ══════════════════════════════════════════ */}
@@ -339,7 +388,7 @@ export default function OnboardPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.55, ease: "easeOut" }}
-              className="w-full max-w-xl bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.14)] px-8 py-10 md:px-10 md:py-12"
+              className="w-full max-w-2xl bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.14)] px-8 py-10 md:px-12 md:py-12"
             >
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-navbar mb-3">
                 You&apos;re in.
@@ -443,7 +492,7 @@ export default function OnboardPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="w-full max-w-xl bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.14)] px-8 py-10 md:px-10 md:py-12"
+            className="w-full max-w-2xl bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.14)] px-8 py-10 md:px-12 md:py-12"
           >
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-navbar mb-3">
               The Hopamine Network
@@ -463,14 +512,14 @@ export default function OnboardPage() {
                 <AnimatePresence mode="wait">
                   {!nameDone ? (
                     <motion.div key="q1-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                      <p className="font-serif text-xl text-neutral-900 mb-5">What&apos;s your name?</p>
+                      <p className="font-serif text-2xl text-neutral-900 mb-5">What&apos;s your name?</p>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your name"
                         onKeyDown={(e) => e.key === "Enter" && submitName()}
-                        className="w-full bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-4"
+                        className="w-full bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-4"
                       />
                       <button onClick={submitName} disabled={!name.trim()} className={outlineBtn(!!name.trim())}>
                         Continue →
@@ -506,12 +555,11 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!locationDone ? (
                         <motion.div key="q2-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">
                             Where are you building from?
                           </p>
                           <LocationCombobox
-                            value={location}
-                            onChange={setLocation}
+                            onSelect={setLocation}
                             onSubmit={submitLocation}
                           />
                           <button
@@ -554,7 +602,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!badgesDone ? (
                         <motion.div key="q3-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">
                             Which archetypes resonate with you?
                           </p>
                           <div className="space-y-2 mb-5 max-h-96 overflow-y-auto">
@@ -671,7 +719,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!skillsDone ? (
                         <motion.div key="q4-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">What are your core skills?</p>
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">What are your core skills?</p>
                           <AutoTextarea
                             value={skillsDraft}
                             onChange={setSkillsDraft}
@@ -688,7 +736,7 @@ export default function OnboardPage() {
                         </motion.div>
                       ) : editingSkills ? (
                         <motion.div key="q4-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">What are your core skills?</p>
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">What are your core skills?</p>
                           <AutoTextarea value={tempSkills} onChange={setTempSkills} placeholder="e.g., Software development, design, community organizing…" />
                           <div className="mt-4 flex items-center gap-4">
                             <button onClick={saveSkills} disabled={!tempSkills.trim()} className={outlineBtn(!!tempSkills.trim())}>
@@ -735,7 +783,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!visionDone ? (
                         <motion.div key="q5-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">What&apos;s your vision for the future?</p>
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">What&apos;s your vision for the future?</p>
                           <AutoTextarea value={visionDraft} onChange={setVisionDraft} placeholder="Describe your vision…" />
                           <div className="mt-4 flex items-center gap-4">
                             <button onClick={submitVision} disabled={!visionDraft.trim()} className={outlineBtn(!!visionDraft.trim())}>
@@ -748,7 +796,7 @@ export default function OnboardPage() {
                         </motion.div>
                       ) : editingVision ? (
                         <motion.div key="q5-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">What&apos;s your vision for the future?</p>
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">What&apos;s your vision for the future?</p>
                           <AutoTextarea value={tempVision} onChange={setTempVision} placeholder="Describe your vision…" />
                           <div className="mt-4 flex items-center gap-4">
                             <button onClick={saveVision} disabled={!tempVision.trim()} className={outlineBtn(!!tempVision.trim())}>
@@ -795,7 +843,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!done ? (
                         <motion.div key="q6-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-xl text-neutral-900 mb-5">
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">
                             Why does this movement matter to you?
                           </p>
                           <AutoTextarea
@@ -849,14 +897,14 @@ export default function OnboardPage() {
                     </h2>
                     <button
                       onClick={() => void finishOnboarding()}
-                      disabled={submitting}
+                      disabled={submitting || isAuthLoading || !isAuthenticated}
                       className={`font-mono text-sm uppercase tracking-wide px-8 py-3 transition-colors cursor-pointer ${
-                        submitting
+                        submitting || isAuthLoading || !isAuthenticated
                           ? "bg-neutral-200 text-neutral-400 cursor-default"
                           : "bg-accent-navbar text-white hover:bg-[#0090d4]"
                       }`}
                     >
-                      {submitting ? "Saving…" : "Finish creating account →"}
+                      {submitting ? "Saving…" : isAuthLoading ? "Loading…" : "Finish creating account →"}
                     </button>
                     {submitError && (
                       <p className="mt-3 font-mono text-xs text-red-500">{submitError}</p>

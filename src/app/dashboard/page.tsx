@@ -1,14 +1,31 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
+import { useConvexAuth } from "convex/react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
+import { useState } from "react";
 
 export default function DashboardPage() {
   const { user, isLoaded: clerkLoaded } = useUser();
+  const { isAuthenticated: convexAuthed } = useConvexAuth();
   const convexProfile = useQuery(api.users.getCurrentUser, {});
+  const deleteAccount = useMutation(api.users.deleteAccount);
+  const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "deleting">("idle");
+
+  async function handleDeleteAccount() {
+    if (!convexAuthed) return;
+    setDeleteStep("deleting");
+    try {
+      await deleteAccount();
+      await user?.delete();
+    } catch (err) {
+      console.error(err);
+      setDeleteStep("confirm");
+    }
+  }
 
   const convexDeployUrl =
     typeof process.env.NEXT_PUBLIC_CONVEX_URL === "string"
@@ -200,7 +217,45 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      <aside className="mt-12 rounded-none border border-accent-navbar/30 bg-white/60 p-6 font-mono text-xs uppercase tracking-wide normal-case backdrop-blur-sm">
+      <section className="mt-12 rounded-none border-2 border-red-200 bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] md:p-8">
+        <h2 className="font-mono text-sm uppercase tracking-wide text-red-500">Danger Zone</h2>
+        <p className="mt-2 font-mono text-xs leading-snug normal-case text-neutral-600">
+          Permanently deletes your Convex profile and Clerk account. This cannot be undone.
+        </p>
+        <div className="mt-4 flex items-center gap-3">
+          {deleteStep === "idle" && (
+            <button
+              onClick={() => setDeleteStep("confirm")}
+              className="inline-flex touch-manipulation items-center border border-red-400 px-4 py-2 font-mono text-xs uppercase tracking-wide text-red-500 transition-opacity hover:opacity-80"
+            >
+              Delete account
+            </button>
+          )}
+          {deleteStep === "confirm" && (
+            <>
+              <span className="font-mono text-xs normal-case text-neutral-700">Are you sure? This is irreversible.</span>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={!convexAuthed}
+                className="inline-flex touch-manipulation items-center border border-red-500 bg-red-500 px-4 py-2 font-mono text-xs uppercase tracking-wide text-white transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-default"
+              >
+                Yes, delete
+              </button>
+              <button
+                onClick={() => setDeleteStep("idle")}
+                className="inline-flex touch-manipulation items-center border border-neutral-300 px-4 py-2 font-mono text-xs uppercase tracking-wide text-neutral-600 transition-opacity hover:opacity-80"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+          {deleteStep === "deleting" && (
+            <span className="font-mono text-xs normal-case text-neutral-500">Deleting…</span>
+          )}
+        </div>
+      </section>
+
+      <aside className="mt-8 rounded-none border border-accent-navbar/30 bg-white/60 p-6 font-mono text-xs uppercase tracking-wide normal-case backdrop-blur-sm">
         <p className="text-neutral-700">
           <strong className="text-accent-navbar">Shortcuts:</strong>{" "}
           <Link href="/projects" className="underline underline-offset-4 hover:opacity-80">

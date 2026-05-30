@@ -234,6 +234,29 @@ export const completeOnboarding = mutation({
   },
 });
 
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    if (user.avatarStorageId) {
+      await ctx.storage.delete(user.avatarStorageId);
+    }
+
+    await ctx.db.delete(user._id);
+
+    return { success: true };
+  },
+});
+
 export const generateImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
