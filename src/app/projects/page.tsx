@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
+import { PROJECT_TILES } from "@/lib/projectTiles";
 
 function AddProjectIcon({ className }: { className?: string }) {
   return (
@@ -22,35 +23,6 @@ function AddProjectIcon({ className }: { className?: string }) {
 }
 
 const CATEGORIES = ["Projects", "Learn", "News"] as const;
-
-type ProjectTile = {
-  caption: string;
-  title: string;
-  person: string;
-};
-
-const PROJECT_TILES: ProjectTile[] = [
-  {
-    caption: "Toolkit, docs & onboarding flows",
-    title: "Builder starter kit",
-    person: "Jordan Mills",
-  },
-  {
-    caption: "Gatherings, salons & town halls",
-    title: "Community calendar",
-    person: "Sam Rivera",
-  },
-  {
-    caption: "Briefings toward #2036",
-    title: "Research archive",
-    person: "Taylor Brooks",
-  },
-  {
-    caption: "Partnerships & pilots",
-    title: "Residency program",
-    person: "Morgan Lee",
-  },
-];
 
 export default function ProjectsPage() {
   const [selected, setSelected] = useState<(typeof CATEGORIES)[number]>(

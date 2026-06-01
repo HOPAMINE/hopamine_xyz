@@ -196,6 +196,67 @@ export const updateProfilePicture = mutation({
   },
 });
 
+export const completeOnboarding = mutation({
+  args: {
+    name: v.string(),
+    location: v.string(),
+    archetypes: v.array(v.string()),
+    skills: v.string(),
+    vision: v.string(),
+    why: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    // Idempotent — don't overwrite answers if already completed
+    if (user.onboardingCompletedAt) return { success: true, alreadyCompleted: true };
+
+    await ctx.db.patch(user._id, {
+      name: args.name.trim(),
+      location: args.location.trim(),
+      archetypes: args.archetypes,
+      skills: args.skills.trim(),
+      vision: args.vision.trim(),
+      why: args.why.trim(),
+      onboardingCompletedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, alreadyCompleted: false };
+  },
+});
+
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    if (user.avatarStorageId) {
+      await ctx.storage.delete(user.avatarStorageId);
+    }
+
+    await ctx.db.delete(user._id);
+
+    return { success: true };
+  },
+});
+
 export const generateImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {

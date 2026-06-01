@@ -122,10 +122,10 @@ export default function SignInPage() {
 
   return (
     <div
-      className={`${shell} flex items-start justify-center bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] lg:items-center`}
+      className={`${shell} flex items-center justify-center bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)]`}
     >
-      <div className="flex w-full max-w-6xl flex-col items-stretch gap-14 lg:flex-row lg:items-center lg:justify-center lg:gap-24">
-        <div className="flex-1 lg:max-w-md">
+      <div className="flex w-full max-w-md flex-col items-stretch">
+        <div className="w-full">
           {/* <div className="flex items-center">
             <Image
               src="/icon.svg"
@@ -138,11 +138,11 @@ export default function SignInPage() {
             />
           </div> */}
 
-          <div className="mt-10 mb-8 lg:mt-14">
+          <div className="mt-10 mb-8 lg:mt-14 text-center">
             <h1 className="font-serif text-5xl leading-[0.9] tracking-[-0.05em] text-white drop-shadow-[0_1px_24px_rgba(0,0,0,0.15)] md:text-6xl lg:text-[3.35rem]">
               Sign in &amp; build.
             </h1>
-            <p className="mt-5 max-w-md font-mono text-sm uppercase tracking-wide leading-relaxed text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.12)]">
+            <p className="mt-5 font-mono text-sm uppercase tracking-wide leading-relaxed text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.12)]">
               The Hopamine Network.
             </p>
           </div>
@@ -251,22 +251,6 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <div className="relative hidden shrink-0 items-center justify-center lg:flex lg:min-h-[440px] lg:flex-1">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-[-20%] rounded-full bg-[#00a6f3]/20 blur-[110px]"
-          />
-          <div className="relative w-full max-w-md scale-[0.95] xl:scale-100">
-           {/*  <Image
-              src="/icon.svg"
-              alt=""
-              width={440}
-              height={440}
-              className="h-auto w-full object-contain opacity-95 drop-shadow-[0_30px_60px_rgba(0,0,0,0.45)]"
-              unoptimized
-            /> */}
-          </div>
-        </div>
       </div>
     </div>
   );
