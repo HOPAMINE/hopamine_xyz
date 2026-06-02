@@ -18,8 +18,8 @@ function UserSyncInner() {
   const { user, isLoaded: isUserLoaded } = useUser();
   const getOrCreateUser = useMutation(api.users.getOrCreate);
   const existing = useQuery(
-    api.users.getByClerkId,
-    user?.id ? { clerkId: user.id } : "skip",
+    api.users.getCurrentUser,
+    isUserLoaded && user ? {} : "skip",
   );
   const pathname = usePathname();
   const router = useRouter();
