@@ -34,6 +34,8 @@ function UserSyncInner() {
       clerkId: user.id,
       avatarUrl: user.imageUrl ?? "",
       username: user.username || undefined,
+    }).catch((err: unknown) => {
+      console.error("[UserSync] getOrCreate failed:", err);
     });
   }, [user, isUserLoaded, getOrCreateUser, existing]);
 
