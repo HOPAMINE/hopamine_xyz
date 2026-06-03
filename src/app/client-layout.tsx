@@ -11,7 +11,7 @@ import { Providers } from "./providers";
 const convexConfigured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /** Routes that are exempt from the onboarding gate. */
-const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback"];
+const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/profile-compare"];
 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
@@ -53,6 +53,12 @@ function UserGate() {
   return <UserSyncInner />;
 }
 
+function NavbarGate() {
+  const pathname = usePathname();
+  if (ONBOARDING_EXEMPT.some((p) => pathname.startsWith(p))) return null;
+  return <Navbar />;
+}
+
 export default function ClientLayout({
   children,
 }: Readonly<{
@@ -61,7 +67,7 @@ export default function ClientLayout({
   return (
     <Providers>
       <UserGate />
-      <Navbar />
+      <NavbarGate />
       {children}
     </Providers>
   );

@@ -17,6 +17,7 @@ type BuilderTile = {
   name: string;
   projects: string[];
   skills: [string, string, string];
+  discordUsername?: string;
 };
 
 function randomMosaic() {
@@ -61,7 +62,7 @@ export default function BuildersPage() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-4 md:gap-3 lg:gap-3 xl:gap-4 [&>article]:min-w-0">
           {BUILDER_TILES.map((builder) => {
             const { rot, triangles } = randomMosaic();
-            return <BuilderCard key={builder.name} {...builder} rot={rot} triangles={triangles} />;
+            return <BuilderCard key={builder.name} {...builder} rot={rot} triangles={triangles} discordUsername={builder.discordUsername} />;
           })}
         </div>
       </section>

@@ -15,7 +15,7 @@ export default defineSchema({
     stripeCustomerId: v.optional(v.string()),
     location: v.optional(v.string()),
     archetypes: v.optional(v.array(v.string())),
-    skills: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
     onboardingCompletedAt: v.optional(v.number()),

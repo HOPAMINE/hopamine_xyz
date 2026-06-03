@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { TriDatum, VW, VH, TRI_STYLE } from "./hexMosaic";
 
 type Props = {
@@ -6,12 +9,15 @@ type Props = {
   skills: [string, string, string];
   rot: number;
   triangles: TriDatum[];
+  discordUsername?: string;
 };
 
 const AVATAR_SIZE = 72;
 const BANNER_H = 112;
 
-export function BuilderCard({ name, projects, skills, rot, triangles }: Props) {
+export function BuilderCard({ name, projects, skills, rot, triangles, discordUsername }: Props) {
+  const [copied, setCopied] = useState(false);
+
   const initials = name
     .split(" ")
     .map((w) => w[0])
@@ -68,9 +74,22 @@ export function BuilderCard({ name, projects, skills, rot, triangles }: Props) {
           </p>
         </div>
         <div className="mt-auto flex items-center justify-between">
-          <button className="bg-[#00a6f3] px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#0090d4]">
-            Connect
-          </button>
+          {discordUsername ? (
+            <button
+              onClick={() => {
+                void navigator.clipboard.writeText(discordUsername);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="bg-[#00a6f3] px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#0090d4]"
+            >
+              {copied ? "Copied!" : "Connect"}
+            </button>
+          ) : (
+            <button className="bg-[#00a6f3] px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#0090d4] opacity-50 cursor-default">
+              Connect
+            </button>
+          )}
           <button className="font-mono text-[11px] font-semibold uppercase tracking-widest text-[#00a6f3] transition-colors hover:text-[#0090d4] hover:underline">
             View Profile
           </button>

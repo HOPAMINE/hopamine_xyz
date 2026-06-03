@@ -81,6 +81,12 @@ export const updateProfile = mutation({
     website: v.optional(v.string()),
     buttonColor: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
+    location: v.optional(v.string()),
+    archetypes: v.optional(v.array(v.string())),
+    skills: v.optional(v.array(v.string())),
+    vision: v.optional(v.string()),
+    why: v.optional(v.string()),
+    discord: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -151,6 +157,34 @@ export const updateProfile = mutation({
       updates.avatarStorageId = args.storageId;
     }
 
+    if (args.location !== undefined) {
+      updates.location = args.location.trim() || undefined;
+    }
+    if (args.archetypes !== undefined) {
+      updates.archetypes = args.archetypes;
+    }
+    if (args.skills !== undefined) {
+      const filtered = args.skills.map((s) => s.trim()).filter(Boolean);
+      updates.skills = filtered.length > 0 ? filtered : undefined;
+    }
+    if (args.vision !== undefined) {
+      updates.vision = args.vision.trim() || undefined;
+    }
+    if (args.why !== undefined) {
+      updates.why = args.why.trim() || undefined;
+    }
+    if (args.discord !== undefined) {
+      const discord = args.discord.trim().replace(/^@/, "");
+      if (discord && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(discord)) {
+        throw new Error("Invalid Discord username");
+      }
+      const existing = user.socialLinks ?? {};
+      updates.socialLinks = discord ? { ...existing, discord } : (() => {
+        const { discord: _removed, ...rest } = existing;
+        return Object.keys(rest).length > 0 ? rest : undefined;
+      })();
+    }
+
     await ctx.db.patch(user._id, updates);
 
     return { success: true };
@@ -201,9 +235,10 @@ export const completeOnboarding = mutation({
     name: v.string(),
     location: v.string(),
     archetypes: v.array(v.string()),
-    skills: v.string(),
+    skills: v.array(v.string()),
     vision: v.string(),
     why: v.string(),
+    discord: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -219,13 +254,20 @@ export const completeOnboarding = mutation({
     // Idempotent — don't overwrite answers if already completed
     if (user.onboardingCompletedAt) return { success: true, alreadyCompleted: true };
 
+    const discord = (args.discord?.trim() ?? "").replace(/^@/, "");
+    if (discord && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(discord)) {
+      throw new Error("Invalid Discord username");
+    }
+    const socialLinks = discord ? { discord } : undefined;
+
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
       location: args.location.trim(),
       archetypes: args.archetypes,
-      skills: args.skills.trim(),
+      skills: args.skills.map((s) => s.trim()).filter(Boolean),
       vision: args.vision.trim(),
       why: args.why.trim(),
+      ...(socialLinks !== undefined ? { socialLinks } : {}),
       onboardingCompletedAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -261,5 +303,28 @@ export const generateImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+// One-time migration: convert legacy string skills to string[].
+// Run once via the Convex dashboard or `npx convex run users:migrateSkillsToArray`.
+export const migrateSkillsToArray = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let migrated = 0;
+    for (const user of users) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof (user.skills as any) === "string") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const skills = (user.skills as any as string)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+        await ctx.db.patch(user._id, { skills });
+        migrated++;
+      }
+    }
+    return { migrated };
   },
 });

@@ -11,7 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
-  "/onboard(.*)",
+  "/profile-compare(.*)",
   "/favicon.ico",
   "/icon.svg",
 ]);

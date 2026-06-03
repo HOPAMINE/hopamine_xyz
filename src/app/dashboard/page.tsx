@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
+import { ProfileTab } from "./ProfileTab";
 
 const TABS = [
   { id: "projects", label: "My Projects" },
@@ -29,7 +30,7 @@ function DashboardContent() {
 
   return (
     <main
-      className={`min-h-dvh w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-28 pb-16 md:pt-32 md:pb-24 ${NAV_ALIGN_PAD}`}
+      className={`flex-1 min-h-0 overflow-y-auto w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-28 pb-16 md:pt-32 md:pb-24 ${NAV_ALIGN_PAD}`}
     >
       <header>
         <h1 className="font-serif text-4xl tracking-[-0.04em] text-white sm:text-5xl">
@@ -73,9 +74,6 @@ function ProjectsTab() {
   return <div />;
 }
 
-function ProfileTab() {
-  return <div />;
-}
 
 function SettingsRow({
   label,
@@ -136,11 +134,6 @@ function SettingsTab() {
     }
   }
 
-  const convexDeployUrl =
-    typeof process.env.NEXT_PUBLIC_CONVEX_URL === "string"
-      ? process.env.NEXT_PUBLIC_CONVEX_URL
-      : "";
-
   const convexLoading = convexProfile === undefined;
   const convexUser = convexProfile ?? null;
 
@@ -162,48 +155,9 @@ function SettingsTab() {
           label="Email"
           value={user?.primaryEmailAddress?.emailAddress ?? "—"}
         />
-        <SettingsRow
-          label="Clerk ID"
-          description="Your unique Clerk user identifier"
-          value={
-            <code className="text-xs text-neutral-500 break-all">{user?.id ?? "—"}</code>
-          }
-        />
-      </SettingsSection>
-
-      <SettingsSection title="Convex Profile">
-        {!convexUser ? (
-          <div className="py-4">
-            <p className="font-mono text-sm text-neutral-500">
-              No Convex profile found. Navigate the app while signed in — it syncs automatically.
-            </p>
-          </div>
-        ) : (
-          <>
-            <SettingsRow label="Name" value={convexUser.name || "—"} />
-            <SettingsRow label="Email" value={convexUser.email} />
-            {convexUser.username && (
-              <SettingsRow label="Username" value={convexUser.username} />
-            )}
-            <SettingsRow
-              label="Convex User ID"
-              description="Clerk ID stored in Convex"
-              value={
-                <code className="text-xs text-neutral-500 break-all">{convexUser.clerkId}</code>
-              }
-            />
-          </>
+        {convexUser?.username && (
+          <SettingsRow label="Username" value={convexUser.username} />
         )}
-        <SettingsRow
-          label="Deployment URL"
-          value={
-            convexDeployUrl ? (
-              <code className="text-xs text-neutral-500">{convexDeployUrl}</code>
-            ) : (
-              <span className="text-xs text-neutral-400">Not set — add NEXT_PUBLIC_CONVEX_URL to .env.local</span>
-            )
-          }
-        />
       </SettingsSection>
 
       <SettingsSection title="Danger Zone">

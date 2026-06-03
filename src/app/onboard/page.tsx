@@ -224,11 +224,10 @@ export default function OnboardPage() {
   const [openBadges, setOpenBadges] = useState(false)
   const [tempBadges, setTempBadges] = useState<string[]>([])
 
-  const [skillsDraft, setSkillsDraft] = useState("")
-  const [skills, setSkills] = useState("")
+  const [skillsList, setSkillsList] = useState<string[]>(["", ""])
   const [skillsDone, setSkillsDone] = useState(false)
   const [editingSkills, setEditingSkills] = useState(false)
-  const [tempSkills, setTempSkills] = useState("")
+  const [tempSkillsList, setTempSkillsList] = useState<string[]>(["", ""])
 
   const [visionDraft, setVisionDraft] = useState("")
   const [vision, setVision] = useState("")
@@ -239,6 +238,10 @@ export default function OnboardPage() {
   const [whyDraft, setWhyDraft] = useState("")
   const [why, setWhy] = useState("")
   const [done, setDone] = useState(false)
+
+  const [discord, setDiscord] = useState("")
+  const [discordError, setDiscordError] = useState("")
+  const [discordDone, setDiscordDone] = useState(false)
 
   // Confirmation screen
   const [confirmed, setConfirmed] = useState(false)
@@ -277,15 +280,14 @@ export default function OnboardPage() {
   }
 
   function submitSkills() {
-    if (!skillsDraft.trim()) return
-    setSkills(skillsDraft.trim())
+    if (!skillsList.some((s) => s.trim())) return
     setSkillsDone(true)
     scrollDown()
   }
 
   function saveSkills() {
-    if (!tempSkills.trim()) return
-    setSkills(tempSkills.trim())
+    if (!tempSkillsList.some((s) => s.trim())) return
+    setSkillsList([...tempSkillsList])
     setEditingSkills(false)
   }
 
@@ -310,6 +312,18 @@ export default function OnboardPage() {
     scrollDown()
   }
 
+  function submitDiscord() {
+    const trimmed = discord.trim().replace(/^@/, "")
+    if (trimmed && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(trimmed)) {
+      setDiscordError("Just your username — e.g. jonsmith or jonsmith#1234")
+      return
+    }
+    setDiscordError("")
+    setDiscord(trimmed)
+    setDiscordDone(true)
+    scrollDown()
+  }
+
   // The actual Convex commit happens here
   async function finishOnboarding() {
     if (submitting || !isAuthenticated) return
@@ -320,12 +334,13 @@ export default function OnboardPage() {
         name: name.trim(),
         location: location.trim(),
         archetypes: badges,
-        skills,
+        skills: skillsList.filter((s) => s.trim()),
         vision,
         why,
+        discord: discord.trim() || undefined,
       })
       setConfirmed(true)
-      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80)
+      setTimeout(() => topRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 80)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong — please try again."
       setSubmitError(msg)
@@ -336,7 +351,6 @@ export default function OnboardPage() {
 
   // ── Derived display values ────────────────────────────────────────────────
 
-  const displaySkills = skills.length > 300 ? skills.slice(0, 300).trimEnd() + "…" : skills
   const displayVision = vision.length > 300 ? vision.slice(0, 300).trimEnd() + "…" : vision
   const badgeLabels = badges
     .map((id) => BADGES.find((b) => b.id === id)?.title)
@@ -522,7 +536,7 @@ export default function OnboardPage() {
                         className="w-full bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-4"
                       />
                       <button onClick={submitName} disabled={!name.trim()} className={outlineBtn(!!name.trim())}>
-                        Continue →
+                        Continue
                       </button>
                     </motion.div>
                   ) : (
@@ -567,7 +581,7 @@ export default function OnboardPage() {
                             disabled={!location.trim()}
                             className={outlineBtn(!!location.trim())}
                           >
-                            Continue →
+                            Continue
                           </button>
                         </motion.div>
                       ) : (
@@ -635,7 +649,7 @@ export default function OnboardPage() {
                             disabled={badges.length === 0}
                             className={outlineBtn(badges.length > 0)}
                           >
-                            Continue →
+                            Continue
                           </button>
                         </motion.div>
                       ) : (
@@ -720,32 +734,94 @@ export default function OnboardPage() {
                       {!skillsDone ? (
                         <motion.div key="q4-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
                           <p className="font-serif text-2xl text-neutral-900 mb-5">What are your core skills?</p>
-                          <AutoTextarea
-                            value={skillsDraft}
-                            onChange={setSkillsDraft}
-                            placeholder="e.g., Software development, design, community organizing…"
-                          />
-                          <div className="mt-4 flex items-center gap-4">
-                            <button onClick={submitSkills} disabled={!skillsDraft.trim()} className={outlineBtn(!!skillsDraft.trim())}>
-                              Continue →
-                            </button>
-                            <span className="font-mono text-xs text-neutral-300">
-                              {skillsDraft.trim().split(/\s+/).filter(Boolean).length} words
-                            </span>
+                          <div className="space-y-3 mb-4">
+                            {skillsList.map((skill, i) => (
+                              <div key={i} className="flex items-center gap-3">
+                                <input
+                                  value={skill}
+                                  onChange={(e) => {
+                                    const next = [...skillsList]
+                                    next[i] = e.target.value
+                                    setSkillsList(next)
+                                  }}
+                                  maxLength={35}
+                                  placeholder={i === 0 ? "Permaculture design…" : i === 1 ? "Regenerative agriculture…" : `Skill ${i + 1}…`}
+                                  className="flex-1 bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
+                                />
+                                {skillsList.length > 1 && (
+                                  <button
+                                    onClick={() => setSkillsList(skillsList.filter((_, j) => j !== i))}
+                                    className="text-neutral-300 hover:text-neutral-400 transition-colors font-mono text-xl leading-none pb-1"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
+                          {skillsList.length < 5 && (
+                            <button
+                              onClick={() => setSkillsList([...skillsList, ""])}
+                              className="flex items-center gap-1.5 font-mono text-sm text-accent-navbar hover:text-[#0090d4] transition-colors mb-5"
+                            >
+                              <span className="text-xl font-light leading-none">+</span>
+                              <span>Add skill</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={submitSkills}
+                            disabled={!skillsList.some((s) => s.trim())}
+                            className={outlineBtn(skillsList.some((s) => s.trim()))}
+                          >
+                            Continue
+                          </button>
                         </motion.div>
                       ) : editingSkills ? (
                         <motion.div key="q4-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                           <p className="font-serif text-2xl text-neutral-900 mb-5">What are your core skills?</p>
-                          <AutoTextarea value={tempSkills} onChange={setTempSkills} placeholder="e.g., Software development, design, community organizing…" />
-                          <div className="mt-4 flex items-center gap-4">
-                            <button onClick={saveSkills} disabled={!tempSkills.trim()} className={outlineBtn(!!tempSkills.trim())}>
+                          <div className="space-y-3 mb-4">
+                            {tempSkillsList.map((skill, i) => (
+                              <div key={i} className="flex items-center gap-3">
+                                <input
+                                  value={skill}
+                                  onChange={(e) => {
+                                    const next = [...tempSkillsList]
+                                    next[i] = e.target.value
+                                    setTempSkillsList(next)
+                                  }}
+                                  maxLength={35}
+                                  placeholder={`Skill ${i + 1}…`}
+                                  className="flex-1 bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
+                                />
+                                {tempSkillsList.length > 1 && (
+                                  <button
+                                    onClick={() => setTempSkillsList(tempSkillsList.filter((_, j) => j !== i))}
+                                    className="text-neutral-300 hover:text-neutral-400 transition-colors font-mono text-xl leading-none pb-1"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {tempSkillsList.length < 5 && (
+                            <button
+                              onClick={() => setTempSkillsList([...tempSkillsList, ""])}
+                              className="flex items-center gap-1.5 font-mono text-sm text-accent-navbar hover:text-[#0090d4] transition-colors mb-4"
+                            >
+                              <span className="text-xl font-light leading-none">+</span>
+                              <span>Add skill</span>
+                            </button>
+                          )}
+                          <div className="mt-2 flex items-center gap-4">
+                            <button
+                              onClick={saveSkills}
+                              disabled={!tempSkillsList.some((s) => s.trim())}
+                              className={outlineBtn(tempSkillsList.some((s) => s.trim())).replace("px-6 py-2.5", "px-5 py-2")}
+                            >
                               Save
                             </button>
                             <button onClick={() => setEditingSkills(false)} className={smallOutlineBtn}>Cancel</button>
-                            <span className="font-mono text-xs text-neutral-300 ml-auto">
-                              {tempSkills.trim().split(/\s+/).filter(Boolean).length} words
-                            </span>
                           </div>
                         </motion.div>
                       ) : (
@@ -754,16 +830,20 @@ export default function OnboardPage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.5 }}
-                          onClick={() => { setTempSkills(skills); setEditingSkills(true) }}
+                          onClick={() => { setTempSkillsList([...skillsList]); setEditingSkills(true) }}
                           className="cursor-pointer hover:opacity-70 transition-opacity group"
                         >
                           <p className="font-serif text-3xl text-neutral-900 leading-snug mb-3">
                             Core skills:
                             <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                           </p>
-                          <p className="font-serif text-3xl text-accent-navbar leading-snug">
-                            &ldquo;{displaySkills}&rdquo;
-                          </p>
+                          <ul className="flex flex-col gap-1.5">
+                            {skillsList.filter((s) => s.trim()).map((s, i) => (
+                              <li key={i} className="font-serif text-2xl text-accent-navbar">
+                                {s}
+                              </li>
+                            ))}
+                          </ul>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -787,7 +867,7 @@ export default function OnboardPage() {
                           <AutoTextarea value={visionDraft} onChange={setVisionDraft} placeholder="Describe your vision…" />
                           <div className="mt-4 flex items-center gap-4">
                             <button onClick={submitVision} disabled={!visionDraft.trim()} className={outlineBtn(!!visionDraft.trim())}>
-                              Continue →
+                              Continue
                             </button>
                             <span className="font-mono text-xs text-neutral-300">
                               {visionDraft.trim().split(/\s+/).filter(Boolean).length} words
@@ -857,7 +937,7 @@ export default function OnboardPage() {
                               disabled={!whyDraft.trim()}
                               className={outlineBtn(!!whyDraft.trim())}
                             >
-                              Submit →
+                              Continue
                             </button>
                             <span className="font-mono text-xs text-neutral-300">
                               {whyDraft.trim().split(/\s+/).filter(Boolean).length} words
@@ -879,9 +959,71 @@ export default function OnboardPage() {
                 )}
               </AnimatePresence>
 
-              {/* Finish CTA ─────────────────────────────────────────────── */}
+              {/* Q7 — Discord ──────────────────────────────────────────── */}
               <AnimatePresence>
                 {done && (
+                  <motion.div
+                    key="q7"
+                    initial={{ opacity: 0, y: 22 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55, ease: "easeOut" }}
+                  >
+                    <AnimatePresence mode="wait">
+                      {!discordDone ? (
+                        <motion.div key="q7-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                          <p className="font-serif text-2xl text-neutral-900 mb-1">
+                            What&apos;s your Discord? <span className="font-mono text-sm text-neutral-400">(optional)</span>
+                          </p>
+                          <p className="font-mono text-xs text-neutral-400 mb-5">Others can copy your username to add you directly.</p>
+                          <input
+                            type="text"
+                            value={discord}
+                            onChange={(e) => { setDiscord(e.target.value); setDiscordError("") }}
+                            onKeyDown={(e) => e.key === "Enter" && submitDiscord()}
+                            placeholder="yourname"
+                            className="w-full bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-2"
+                          />
+                          {discordError && (
+                            <p className="font-mono text-xs text-red-500 mb-3">{discordError}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-4">
+                            <button onClick={submitDiscord} className={outlineBtn(true)}>
+                              Continue
+                            </button>
+                            <button
+                              onClick={() => { setDiscord(""); setDiscordError(""); setDiscordDone(true); scrollDown() }}
+                              className={smallOutlineBtn}
+                            >
+                              Skip
+                            </button>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="q7-done"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          onClick={() => setDiscordDone(false)}
+                          className="cursor-pointer hover:opacity-70 transition-opacity group"
+                        >
+                          <p className="font-serif text-3xl text-neutral-900 leading-snug">
+                            Discord:{" "}
+                            <span className="text-accent-navbar">
+                              {discord.trim() ? discord.replace(/^https?:\/\//, "") : "skipped"}
+                            </span>
+                            <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Finish CTA ─────────────────────────────────────────────── */}
+              <AnimatePresence>
+                {discordDone && (
                   <motion.div
                     key="done"
                     initial={{ opacity: 0, y: 22 }}
@@ -904,7 +1046,7 @@ export default function OnboardPage() {
                           : "bg-accent-navbar text-white hover:bg-[#0090d4]"
                       }`}
                     >
-                      {submitting ? "Saving…" : isAuthLoading ? "Loading…" : "Finish creating account →"}
+                      {submitting ? "Saving…" : isAuthLoading ? "Loading…" : "Submit →"}
                     </button>
                     {submitError && (
                       <p className="mt-3 font-mono text-xs text-red-500">{submitError}</p>
