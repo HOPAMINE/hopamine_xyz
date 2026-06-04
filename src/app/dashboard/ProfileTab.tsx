@@ -238,6 +238,11 @@ function ProfileCardPanel({ user }: { user: ConvexUser }) {
       <MosaicBanner />
 
       <AvatarCircle avatarUrl={displayAvatar} initials={initials} top={BANNER_H - AV_SIZE / 2} />
+      {/* Presence dot — always online when viewing your own dashboard */}
+      <div
+        className="absolute w-3 h-3 rounded-full bg-[#00a6f3] border-2 border-white"
+        style={{ left: 16 + AV_SIZE - 10, top: BANNER_H - AV_SIZE / 2 + AV_SIZE - 10 }}
+      />
 
       {!editing && (
         <button
@@ -676,41 +681,211 @@ function CoreProfilePanel({ user }: { user: ConvexUser }) {
   );
 }
 
-// ─── Availability Panel ───────────────────────────────────────────────────────
+// ─── Status Panel ─────────────────────────────────────────────────────────────
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const PERIODS = ["AM", "PM", "EVE"];
 
-function AvailabilityPanel() {
-  return (
-    <div className="bg-white border border-neutral-200 shadow-sm">
-      <div className="px-4 py-3 border-b border-neutral-100">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#00a6f3]">
-          Availability
-        </p>
-      </div>
-      <div className="p-4">
-        <div className="space-y-1">
-          <div className="grid grid-cols-8 gap-1 mb-1">
-            <div />
-            {DAYS.map((d, i) => (
-              <div key={i} className="text-center font-mono text-[10px] text-neutral-400">
-                {d}
-              </div>
-            ))}
+function StatusPanel({ user }: { user: ConvexUser }) {
+  const updateAvailability = useMutation(api.users.updateAvailability);
+  const updateNowPlaying = useMutation(api.users.updateNowPlaying);
+
+  type View = "empty" | "schedule" | "music";
+  const [view, setView] = useState<View>(
+    user.availability && user.availability.length > 0 ? "schedule" : "empty",
+  );
+  const [localAvailability, setLocalAvailability] = useState<{ day: number; period: number }[]>(
+    user.availability ?? [],
+  );
+  const [nowPlayingDraft, setNowPlayingDraft] = useState(user.nowPlaying ?? "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function isSelected(day: number, period: number) {
+    return localAvailability.some((s) => s.day === day && s.period === period);
+  }
+
+  function toggleCell(day: number, period: number) {
+    const next = isSelected(day, period)
+      ? localAvailability.filter((s) => !(s.day === day && s.period === period))
+      : [...localAvailability, { day, period }];
+    setLocalAvailability(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void updateAvailability({
+        availability: next,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+    }, 600);
+  }
+
+  const tz = user.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  if (view === "empty") {
+    return (
+      <div className="bg-white border border-neutral-200 shadow-sm">
+        <div className="px-4 py-3 border-b border-neutral-100">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#00a6f3]">
+            Availability
+          </p>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
+          <div className="w-10 h-10 rounded-full border-2 border-dashed border-neutral-200 flex items-center justify-center">
+            <svg className="w-5 h-5 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
           </div>
-          {PERIODS.map((period) => (
-            <div key={period} className="grid grid-cols-8 gap-1">
-              <div className="text-right pr-1 font-mono text-[10px] leading-5 text-neutral-400">
-                {period}
+          <div>
+            <p className="font-mono text-[11px] text-neutral-600 uppercase tracking-wide">
+              Set your availability
+            </p>
+            <p className="font-mono text-[10px] text-neutral-400 mt-0.5 leading-relaxed">
+              so others know when to connect
+            </p>
+          </div>
+          <button
+            onClick={() => setView("schedule")}
+            className="bg-[#00a6f3] px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white hover:bg-[#0090d4] transition-colors"
+          >
+            Set Schedule
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-neutral-200 shadow-sm overflow-hidden">
+      <div
+        className="flex transition-transform duration-300 ease-in-out"
+        style={{
+          width: "200%",
+          transform: view === "music" ? "translateX(-50%)" : "translateX(0)",
+        }}
+      >
+        {/* Schedule panel */}
+        <div className="flex flex-col" style={{ width: "50%" }}>
+          <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#00a6f3]">
+              Availability
+            </p>
+            <button
+              onClick={() => setView("music")}
+              className="text-neutral-400 hover:text-[#00a6f3] transition-colors"
+              aria-label="Now playing"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+          <div className="p-4">
+            <p className="font-mono text-[9px] text-neutral-300 mb-2 truncate">{tz}</p>
+            <div className="space-y-1">
+              <div className="grid grid-cols-8 gap-1 mb-1">
+                <div />
+                {DAYS.map((d, i) => (
+                  <div key={i} className="text-center font-mono text-[10px] text-neutral-400">
+                    {d}
+                  </div>
+                ))}
               </div>
-              {DAYS.map((_, di) => (
-                <div key={di} className="h-5 rounded-sm bg-neutral-100" />
+              {PERIODS.map((period, pi) => (
+                <div key={period} className="grid grid-cols-8 gap-1">
+                  <div className="text-right pr-1 font-mono text-[10px] leading-5 text-neutral-400">
+                    {period}
+                  </div>
+                  {DAYS.map((_, di) => (
+                    <button
+                      key={di}
+                      onClick={() => toggleCell(di, pi)}
+                      className={`h-5 rounded-sm transition-colors ${
+                        isSelected(di, pi) ? "bg-[#00a6f3]" : "bg-neutral-100 hover:bg-neutral-200"
+                      }`}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
-          ))}
+          </div>
         </div>
-        <p className="font-mono text-[9px] text-neutral-300 mt-3">Coming soon</p>
+
+        {/* Music panel */}
+        <div className="flex flex-col" style={{ width: "50%" }}>
+          <div className="px-4 py-3 border-b border-neutral-100 flex items-center gap-2">
+            <button
+              onClick={() => setView("schedule")}
+              className="text-neutral-400 hover:text-[#00a6f3] transition-colors"
+              aria-label="Back to schedule"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#00a6f3]">
+              Now Playing
+            </p>
+          </div>
+          <div className="p-4">
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full font-mono text-xs text-neutral-900 border border-neutral-200 px-2.5 py-1.5 pr-7 focus:outline-none focus:border-[#00a6f3] bg-white"
+                maxLength={100}
+                placeholder="Tame Impala – Let It Happen"
+                value={nowPlayingDraft}
+                onChange={(e) => setNowPlayingDraft(e.target.value)}
+                onBlur={() => void updateNowPlaying({ nowPlaying: nowPlayingDraft.trim() || undefined })}
+              />
+              {nowPlayingDraft && (
+                <button
+                  onClick={() => {
+                    setNowPlayingDraft("");
+                    void updateNowPlaying({ nowPlaying: undefined });
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  aria-label="Clear now playing"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Logo Sun Header ──────────────────────────────────────────────────────────
+
+function LogoSun() {
+  return (
+    <div className="flex items-center justify-center" style={{ width: 100, height: 100 }}>
+      <style>{`
+        @keyframes sun-pulse {
+          0%   { transform: scale(1); }
+          50%  { transform: scale(1.18); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+      {/* Entire disc + fade + icon pulses as one unit */}
+      <div
+        className="flex items-center justify-center rounded-full"
+        style={{
+          width: 90,
+          height: 90,
+          background: "radial-gradient(circle, #00a6f3 40%, rgba(0,166,243,0.3) 62%, white 78%)",
+          animation: "sun-pulse 2s ease-in-out infinite",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.svg" alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
       </div>
     </div>
   );
@@ -720,29 +895,9 @@ function AvailabilityPanel() {
 
 function PassportStampsPanel() {
   return (
-    <div className="bg-white border border-neutral-200 shadow-sm flex flex-col h-full min-h-[180px]">
-      <div className="px-4 py-3 border-b border-neutral-100">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#00a6f3]">
-          Passport Stamps
-        </p>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
-        <div className="w-14 h-14 rounded-full border-2 border-dashed border-neutral-200 flex items-center justify-center">
-          <svg className="w-6 h-6 text-neutral-200" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-          </svg>
-        </div>
-        <div>
-          <p className="font-mono text-[11px] text-neutral-400 uppercase tracking-wide">
-            No stamps yet
-          </p>
-          <p className="font-mono text-[10px] text-neutral-300 mt-1 leading-relaxed">
-            Complete projects to earn
-            <br />
-            vouches from your crew
-          </p>
-        </div>
-      </div>
+    <div className="bg-white border border-neutral-200 shadow-sm flex flex-col items-center justify-center h-full min-h-[180px] gap-3">
+      <LogoSun />
+      <p className="font-serif text-base text-[#00a6f3] leading-snug">No Stamps Yet</p>
     </div>
   );
 }
@@ -751,20 +906,9 @@ function PassportStampsPanel() {
 
 function ProjectsPanel() {
   return (
-    <div className="bg-white border border-neutral-200 shadow-sm flex-1 flex flex-col">
-      <div className="px-4 py-3 border-b border-neutral-100">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#00a6f3]">Projects</p>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6 text-center">
-        <p className="font-mono text-[11px] text-neutral-300 uppercase tracking-wide">
-          No projects yet
-        </p>
-        <p className="font-mono text-[10px] text-neutral-300 leading-relaxed">
-          Join or start a project
-          <br />
-          to see it here
-        </p>
-      </div>
+    <div className="bg-white border border-neutral-200 shadow-sm flex-1 flex flex-col items-center justify-center gap-3">
+      <LogoSun />
+      <p className="font-serif text-base text-[#00a6f3] leading-snug">No Projects Yet</p>
     </div>
   );
 }
@@ -800,7 +944,7 @@ export function ProfileTab() {
         <CoreProfilePanel user={user} />
       </div>
       <div style={{ gridColumn: 3, gridRow: "1 / 3", display: "flex", flexDirection: "column", gap: 12 }}>
-        <AvailabilityPanel />
+        <StatusPanel user={user} />
         <ProjectsPanel />
       </div>
       <div style={{ gridColumn: 1, gridRow: 2, display: "flex", flexDirection: "column" }}>

@@ -20,10 +20,15 @@ export default defineSchema({
     why: v.optional(v.string()),
     onboardingCompletedAt: v.optional(v.number()),
     socialLinks: v.optional(v.record(v.string(), v.string())),
+    lastSeenAt: v.optional(v.number()),
+    timezone: v.optional(v.string()),
+    availability: v.optional(v.array(v.object({ day: v.number(), period: v.number() }))),
+    nowPlaying: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_username", ["username"]),
+    .index("by_username", ["username"])
+    .index("by_onboarding_completed_at", ["onboardingCompletedAt"]),
 });

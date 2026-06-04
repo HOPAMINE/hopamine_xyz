@@ -6,17 +6,20 @@ import { TriDatum, VW, VH, TRI_STYLE } from "./hexMosaic";
 type Props = {
   name: string;
   projects: string[];
-  skills: [string, string, string];
+  skills: string[];
   rot: number;
   triangles: TriDatum[];
   discordUsername?: string;
+  lastSeenAt?: number;
 };
 
 const AVATAR_SIZE = 72;
 const BANNER_H = 112;
 
-export function BuilderCard({ name, projects, skills, rot, triangles, discordUsername }: Props) {
+export function BuilderCard({ name, projects, skills, rot, triangles, discordUsername, lastSeenAt }: Props) {
   const [copied, setCopied] = useState(false);
+
+  const isActive = !!lastSeenAt && Date.now() - lastSeenAt < 2 * 60 * 1000;
 
   const initials = name
     .split(" ")
@@ -45,7 +48,7 @@ export function BuilderCard({ name, projects, skills, rot, triangles, discordUse
         </svg>
       </div>
 
-      {/* Avatar — left-aligned, centered on banner bottom edge */}
+      {/* Avatar */}
       <div
         className="absolute left-4 flex items-center justify-center rounded-full border-[3px] border-white bg-[#0090d4]"
         style={{
@@ -57,7 +60,13 @@ export function BuilderCard({ name, projects, skills, rot, triangles, discordUse
         <span className="font-serif text-xl font-semibold text-white">{initials}</span>
       </div>
 
-      {/* Content — left-aligned, padded to clear avatar */}
+      {/* Presence dot */}
+      <div
+        className={`absolute w-3 h-3 rounded-full border-2 border-white ${isActive ? "bg-[#00a6f3]" : "bg-neutral-300"}`}
+        style={{ left: 16 + AVATAR_SIZE - 10, top: BANNER_H - AVATAR_SIZE / 2 + AVATAR_SIZE - 10 }}
+      />
+
+      {/* Content */}
       <div
         className="flex flex-grow flex-col gap-4 px-4 pb-6"
         style={{ paddingTop: AVATAR_SIZE / 2 + 16 }}
@@ -66,12 +75,16 @@ export function BuilderCard({ name, projects, skills, rot, triangles, discordUse
           {name}
         </h3>
         <div className="space-y-2">
-          <p className="wrap-break-word font-mono text-[11px] uppercase tracking-wide text-neutral-700">
-            {skills.join(" · ")}
-          </p>
-          <p className="wrap-break-word font-mono text-[10px] text-neutral-500">
-            Building @ {projects.join(", ")}
-          </p>
+          {skills.length > 0 && (
+            <p className="wrap-break-word font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+              {skills.join(" · ")}
+            </p>
+          )}
+          {projects.length > 0 && (
+            <p className="wrap-break-word font-mono text-[10px] text-neutral-500">
+              Building @ {projects.join(", ")}
+            </p>
+          )}
         </div>
         <div className="mt-auto flex items-center justify-between">
           {discordUsername ? (

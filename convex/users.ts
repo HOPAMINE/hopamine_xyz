@@ -299,6 +299,73 @@ export const deleteAccount = mutation({
   },
 });
 
+export const updateLastSeen = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) return;
+    await ctx.db.patch(user._id, { lastSeenAt: Date.now() });
+  },
+});
+
+export const updateAvailability = mutation({
+  args: {
+    availability: v.array(v.object({ day: v.number(), period: v.number() })),
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { availability: args.availability, timezone: args.timezone });
+  },
+});
+
+export const updateNowPlaying = mutation({
+  args: { nowPlaying: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { nowPlaying: args.nowPlaying });
+  },
+});
+
+export const listBuilders = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_onboarding_completed_at", (q) => q.gt("onboardingCompletedAt", 0))
+      .take(100);
+    users.sort((a, b) => b.createdAt - a.createdAt);
+    return users.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      username: u.username,
+      avatarUrl: u.avatarUrl,
+      location: u.location,
+      archetypes: u.archetypes,
+      skills: u.skills,
+      lastSeenAt: u.lastSeenAt,
+      socialLinks: u.socialLinks,
+    }));
+  },
+});
+
 export const generateImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
