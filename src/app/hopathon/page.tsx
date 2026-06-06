@@ -4,15 +4,15 @@ import { roboto } from "../../../fonts";
 
 export default function HopathonPage() {
   return (
-    <div className="fixed inset-0 z-50 flex min-h-dvh flex-col overflow-y-auto bg-[#13680B]">
-      <div className="relative min-h-0 flex-1">
+    <div className="flex min-h-dvh flex-col bg-[#13680B]">
+      {/* Hero — ~50% of the screen on phones; image crops consistently */}
+      <div className="relative h-[50svh] min-h-[240px] max-h-[52svh] w-full shrink-0 overflow-hidden sm:h-[50dvh] sm:max-h-[52dvh]">
         <Image
           src="/test.png"
           alt=""
-          width={1713}
-          height={2339}
+          fill
           priority
-          className="h-auto w-full"
+          className="object-cover object-top"
           sizes="100vw"
         />
 
