@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/builders(.*)",
   "/directory(.*)",
   "/001(.*)",
+  "/hopathon(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
@@ -22,13 +23,18 @@ const isAuthRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Public routes — no auth check (hopathon signup, marketing, etc.)
+  if (isPublicRoute(req)) {
+    return NextResponse.next();
+  }
+
   const { userId } = await auth();
 
   if (userId && isAuthRoute(req)) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  if (!isPublicRoute(req) && !userId) {
+  if (!userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
