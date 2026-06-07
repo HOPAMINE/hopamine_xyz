@@ -11,6 +11,17 @@ const ENDPOINT =
 
 const hopathonBg = "bg-[#13450E]";
 
+const INTRO_SECTIONS = [
+  {
+    title: "What is The Green Hackathon?",
+    body: "A 48-hour sprint. Build software that solves a global environmental problem, owned locally. Every archetype belongs here — you do not need to code.",
+  },
+  {
+    title: "What does the winner get?",
+    body: "The winning idea gets campaigned across @Mawuli.xyz (50k) and @Hopamine.xyz on Instagram, with the goal of driving 10,000 users to their solution. The first drop in a series of tools made for and by humans.",
+  },
+] as const;
+
 const inputBase =
   "w-full rounded-lg border border-white/25 bg-[#13450E] px-4 py-3 text-base text-[#f5f0e8] outline-none placeholder:text-white/35 focus:border-white/50 tracking-[-0.03em]";
 
@@ -140,7 +151,35 @@ function AutoTextarea({
 /** 0–11 = active questions, 12 = review/submit */
 const SUBMIT_STEP = 12;
 
+function FormHeader() {
+  return (
+    <header className="mb-8 flex items-center justify-between gap-3 border-b border-white/10 pb-6">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/hopathon/the-green-hackathon.svg"
+        alt="The Green Hackathon"
+        width={340}
+        height={138}
+        decoding="async"
+        fetchPriority="high"
+        className="h-10 w-auto max-w-[55vw] sm:h-12"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/hopathon/group-171.svg"
+        alt="Hopamine"
+        width={178}
+        height={46}
+        decoding="async"
+        loading="lazy"
+        className="h-7 w-auto shrink-0 sm:h-8"
+      />
+    </header>
+  );
+}
+
 export function HackathonForm() {
+  const [started, setStarted] = useState(false);
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -177,6 +216,11 @@ export function HackathonForm() {
     const img = new Image();
     img.src = next.src;
   }, [step]);
+
+  useEffect(() => {
+    if (!started || step !== 0) return;
+    nameRef.current?.focus();
+  }, [started, step]);
 
   useEffect(() => {
     if (step === 0) return;
@@ -289,13 +333,53 @@ export function HackathonForm() {
     };
   }
 
+  if (!started) {
+    return (
+      <div
+        ref={topRef}
+        className={`relative min-h-dvh w-full ${hopathonBg}`}
+      >
+        <div className="relative flex min-h-dvh justify-center px-5 py-10 pb-[max(3rem,env(safe-area-inset-bottom))] md:px-8 md:py-16">
+          <div className={`w-full max-w-2xl px-2 py-4 md:px-4 md:py-6 ${hopathonBg}`}>
+            <FormHeader />
+            <p
+              className={`${roboto.className} mb-8 text-base font-semibold tracking-[-0.03em] text-[#f5f0e8]/90 sm:text-lg`}
+            >
+              Think globally · build locally
+            </p>
+            <div className="space-y-8">
+              {INTRO_SECTIONS.map((section) => (
+                <section key={section.title}>
+                  <h2
+                    className={`${roboto.className} text-xl font-bold tracking-[-0.03em] text-[#f5f0e8] sm:text-2xl`}
+                  >
+                    {section.title}
+                  </h2>
+                  <p
+                    className={`${roboto.className} mt-3 text-base leading-relaxed tracking-[-0.03em] text-white/80 sm:text-lg`}
+                  >
+                    {section.body}
+                  </p>
+                </section>
+              ))}
+            </div>
+            <ContinueButton
+              onClick={() => setStarted(true)}
+              label="Start registration →"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (done) {
     return (
       <div
         ref={topRef}
-        className={`relative w-full ${hopathonBg}`}
+        className={`relative min-h-dvh w-full ${hopathonBg}`}
       >
-        <div className="relative flex min-h-full justify-center px-5 py-16 md:px-8 md:py-24">
+        <div className="relative flex min-h-dvh justify-center px-5 py-16 md:px-8 md:py-24">
           <div
             className={`flex w-full max-w-2xl flex-col items-center px-8 py-12 text-center md:px-12 md:py-14 ${hopathonBg}`}
           >
@@ -325,32 +409,11 @@ export function HackathonForm() {
   return (
     <div
       ref={topRef}
-      className={`relative w-full ${hopathonBg} pb-[max(3rem,env(safe-area-inset-bottom))]`}
+      className={`relative min-h-dvh w-full ${hopathonBg} pb-[max(3rem,env(safe-area-inset-bottom))]`}
     >
       <div className="relative flex justify-center px-5 pb-32 pt-6 md:px-8 md:pt-10">
         <div className={`w-full max-w-2xl px-2 py-4 md:px-4 md:py-6 ${hopathonBg}`}>
-          <header className="mb-8 flex items-center justify-between gap-3 border-b border-white/10 pb-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/hopathon/the-green-hackathon.svg"
-              alt="The Green Hackathon"
-              width={340}
-              height={138}
-              decoding="async"
-              fetchPriority="high"
-              className="h-10 w-auto max-w-[55vw] sm:h-12"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/hopathon/group-171.svg"
-              alt="Hopamine"
-              width={178}
-              height={46}
-              decoding="async"
-              loading="lazy"
-              className="h-7 w-auto shrink-0 sm:h-8"
-            />
-          </header>
+          <FormHeader />
 
           <div className="space-y-8">
             {/* Step 0 — Name */}

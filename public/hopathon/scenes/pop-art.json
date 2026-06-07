@@ -1,0 +1,310 @@
+{
+  "layers": [
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "gradient",
+      "usesPingPong": false,
+      "texture": false,
+      "animating": false,
+      "mouseMomentum": 0,
+      "mouseSpring": 0,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision highp float;in vec2 vTextureCoord;uniform vec2 uMousePos;const float PI = 3.14159265359;vec2 rotate(vec2 coord, float angle) {\nfloat s = sin(angle);\nfloat c = cos(angle);\nreturn vec2(\ncoord.x * c - coord.y * s,\ncoord.x * s + coord.y * c\n);\n}out vec4 fragColor;vec3 getBgColor(vec2 uv) {return vec3(0, 0, 0);\n}void main() {vec2 uv = vTextureCoord;\nvec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 0.0000);\nuv -= pos;\nuv /= max(0.5100*2., 1e-5);\nuv = rotate(uv, (-0.0243 - 0.5) * 2. * PI);\nvec4 color = vec4(getBgColor(uv), 1.0) * 1.0000;\nfragColor = color;\n}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision mediump float;in vec3 aVertexPosition;\nin vec2 aTextureCoord;uniform mat4 uMVMatrix;\nuniform mat4 uPMatrix;out vec2 vTextureCoord;\nout vec3 vVertexPosition;void main() {\ngl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\nvTextureCoord = aTextureCoord;\n}"
+      ],
+      "speed": 0.25,
+      "trackMouse": 0,
+      "trackAxes": "xy",
+      "data": {
+        "downSample": 0.5,
+        "depth": false,
+        "uniforms": {},
+        "isBackground": true
+      },
+      "id": "428aa216-cee5-4e08-ad3c-df59714ba0ec",
+      "publicId": "gradient"
+    },
+    {
+      "breakpoints": [],
+      "aspectRatio": 1.3408071748878925,
+      "userDownsample": 1,
+      "states": {
+        "appear": [],
+        "scroll": [],
+        "hover": [],
+        "mousemove": []
+      },
+      "effects": [],
+      "anchorPoint": 8,
+      "mask": 0,
+      "maskInvert": 0,
+      "maskDepth": 0,
+      "maskDepthLayer": 0,
+      "layerType": "image",
+      "width": 450,
+      "widthMode": 1,
+      "height": 335.61872909698997,
+      "heightMode": 2,
+      "left": 0.5,
+      "top": 0.5,
+      "src": "https://assets.unicorn.studio/images/Wz2lujMjSuP3cXd0lKKggqRmkSv2/image%2068.png",
+      "imageNaturalSize": {
+        "type": "Vec2",
+        "_x": 598,
+        "_y": 446
+      },
+      "compiledFragmentShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision highp float;in vec2 vTextureCoord;\nin vec3 vVertexPosition;uniform sampler2D uSourceImage;uniform vec2 uArtboardResolution;\nuniform vec2 uMousePos;\nuniform sampler2D uBgTexture;const float TAU = 6.28318530718;\nconst float PI = 3.14159265359;out vec4 fragColor;vec4 sampleImage(vec2 canvasUV, vec2 mouseOffset, vec2 mouseRotOffset) {\nvec2 canvasPos = vec2(canvasUV.x * uArtboardResolution.x, (1.0 - canvasUV.y) * uArtboardResolution.y);\nvec2 imageUV;float imageAspect = vec2(598, 446).x / vec2(598, 446).y;\nfloat canvasAspect = uArtboardResolution.x / uArtboardResolution.y;\nvec2 fitSize = vec2(\n(canvasAspect < imageAspect) ? uArtboardResolution.y * imageAspect : uArtboardResolution.x,\n(canvasAspect < imageAspect) ? uArtboardResolution.y : uArtboardResolution.x / imageAspect\n);\nvec2 offset = (uArtboardResolution - fitSize) * 0.5;\nvec2 adjustedPos = canvasPos + mouseOffset;\nimageUV = (adjustedPos - offset) / fitSize;\nvec2 flippedUV = vec2(imageUV.x, 1.0 - imageUV.y);\nvec4 color = textureLod(uSourceImage, flippedUV, 0.0);\nif (imageUV.x >= 0.0 && imageUV.x <= 1.0 && imageUV.y >= 0.0 && imageUV.y <= 1.0) {\nreturn color;\n} else {\nreturn vec4(0.0);\n}\n}vec4 getNormalOutput(vec4 color, vec4 background) {\nreturn mix(background, color + background * (1.0 - color.a), 1.0000);\n}vec4 getOutputByMode(vec4 color, vec4 background) {\nreturn getNormalOutput(color, background);\n}vec4 applyImageAdjustments(vec4 color) {color.rgb = clamp(color.rgb, 0.0, 1.0);\ncolor.rgb *= color.a;\nreturn color;\n}vec4 getCompositeOutput(vec2 uv, vec2 mouseOffsetPx, vec2 mouseRotOffset) {\nvec4 background = vec4(0);background = texture(uBgTexture, vTextureCoord);\nvec4 color = sampleImage(uv, mouseOffsetPx, mouseRotOffset);\ncolor = applyImageAdjustments(color);return getOutputByMode(color, background);\n}void main() {\nvec2 uv = vTextureCoord;\nvec2 mouseOffsetUV = (uMousePos - 0.5) * 0.0000;\nvec2 mouseOffsetPx = mouseOffsetUV;\nvec2 mouseRotOffset = (uMousePos - 0.5) * 0.0000 * PI * 0.5;\nuv -= mouseOffsetUV;\nfragColor = getCompositeOutput(uv, mouseOffsetPx, mouseRotOffset);\n}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision highp float;in vec3 aVertexPosition;\nin vec2 aTextureCoord;uniform mat4 uMVMatrix;\nuniform mat4 uPMatrix;\nuniform vec2 uMousePos;out vec2 vTextureCoord;\nout vec3 vVertexPosition;void main() {\nfloat angleX = uMousePos.y * 0.5 - 0.25;\nfloat angleY = (1.-uMousePos.x) * 0.5 - 0.25;mat4 rotateX = mat4(1.0, 0.0, 0.0, 0.0,\n0.0, cos(angleX), -sin(angleX), 0.0,\n0.0, sin(angleX), cos(angleX), 0.0,\n0.0, 0.0, 0.0, 1.0);\nmat4 rotateY = mat4(cos(angleY), 0.0, sin(angleY), 0.0,\n0.0, 1.0, 0.0, 0.0,\n-sin(angleY), 0.0, cos(angleY), 0.0,\n0.0, 0.0, 0.0, 1.0);mat4 rotationMatrix = rotateX * rotateY;\ngl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\nvVertexPosition = (rotationMatrix * vec4(aVertexPosition, 1.0)).xyz;\nvTextureCoord = (vec4(aTextureCoord, 0.0, 1.0)).xy;\n}"
+      ],
+      "data": {
+        "uniforms": {
+          "artboardResolution": {
+            "name": "uArtboardResolution",
+            "type": "2f",
+            "value": {
+              "type": "Vec2",
+              "_x": 1512,
+              "_y": 982
+            }
+          },
+          "aspectRatio": {
+            "name": "uAspectRatio",
+            "type": "1f",
+            "value": 1.3408071748878925
+          }
+        },
+        "elementOpacity": 1
+      },
+      "id": "9cf4bf48-91fa-483c-aca2-3119dc709102",
+      "publicId": "image"
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "states": {
+        "appear": [],
+        "scroll": [],
+        "hover": [],
+        "mousemove": [
+          {
+            "local": {
+              "pendingChanges": {},
+              "changeDebouncer": null,
+              "dragSession": null
+            },
+            "type": "mousemove",
+            "id": "f76dddb3-1d8f-488a-9595-0dfb9e161592",
+            "prop": "radius",
+            "progress": 0,
+            "sensitivity": 1,
+            "momentum": 0.25,
+            "spring": 0,
+            "_velocity": 0,
+            "delay": 0,
+            "mode": "velocity",
+            "axisMode": "both",
+            "point": {
+              "y": 0.5,
+              "x": 0.5
+            },
+            "value": 0.3,
+            "lastMousePos": null,
+            "lastMoveTime": null,
+            "breakpoints": [],
+            "uniformData": {
+              "type": "1f",
+              "name": "uRadius"
+            }
+          }
+        ]
+      },
+      "layerType": "effect",
+      "type": "circle",
+      "usesPingPong": false,
+      "texture": false,
+      "animating": false,
+      "mouseMomentum": 1,
+      "mouseSpring": 0,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision highp float;\nin vec3 vVertexPosition;\nin vec2 vTextureCoord;\nuniform sampler2D uTexture;\nuniform float uRadius;\nuniform vec2 uMousePos;\nuniform vec2 uResolution;\nvec3 blend (int blendMode, vec3 src, vec3 dst) {\nreturn 1. - (1. - src) * (1. - dst);\n}\nvec4 applyLayerMix(vec4 color, vec4 bg, float amount) {\ncolor.rgb = mix(bg.rgb, color.rgb, amount);\ncolor.a = max(bg.a, amount);\nreturn color;\n}const float TAU = 6.28318530718;out vec4 fragColor;mat2 rot(float a) {\nreturn mat2(cos(a),-sin(a),sin(a),cos(a));\n}float luma(vec3 color) {\nreturn dot(color, vec3(0.299, 0.587, 0.114));\n}\nvoid main() {\nvec2 uv = vTextureCoord;\nvec4 bg = texture(uTexture, uv);\nfloat displacement = 0.0;displacement = (luma(bg.rgb) - 0.5) * 0.3500 * 0.5;\nvec2 aspectRatio = vec2(uResolution.x/uResolution.y, 1.0);\nvec2 skew = vec2(max(0.5000, 0.001), max(1.0 - 0.5000, 0.001));\nfloat halfRadius = uRadius * 0.5;\nfloat falloffAmount = max(1.0000, 0.001);\nfloat innerEdge = halfRadius - falloffAmount * halfRadius * 0.5;\nfloat outerEdge = halfRadius + falloffAmount * halfRadius * 0.5;\nvec2 pos = vec2(0.5, 0.5);pos += (uMousePos - 0.5) * 1.0000;\nvec2 scaledUV = uv * aspectRatio * rot(-0.0243 * TAU) * skew;\nvec2 scaledPos = pos * aspectRatio * rot(-0.0243 * TAU) * skew;\nfloat radius = distance(scaledUV, scaledPos);\nfloat falloff = smoothstep(innerEdge + displacement, outerEdge + displacement, radius);\nfalloff = (1.0 - falloff) * 1.0000;vec4 color;vec3 blended = blend(4, vec3(0.11372549019607843, 0.4588235294117647, 0.047058823529411764), bg.rgb);\ncolor = applyLayerMix(vec4(blended, 1.0), bg, falloff);\nfragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision mediump float;in vec3 aVertexPosition;\nin vec2 aTextureCoord;uniform mat4 uMVMatrix;\nuniform mat4 uPMatrix;\nuniform mat4 uTextureMatrix;out vec2 vTextureCoord;\nout vec3 vVertexPosition;void main() {\ngl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\nvTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy;\n}"
+      ],
+      "radius": 0.1,
+      "trackMouse": 1,
+      "trackAxes": "xy",
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "isBackground": false
+      },
+      "id": "26f719cc-8e94-4f68-9c47-9af9f41dc41f",
+      "publicId": "circle"
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "dither",
+      "usesPingPong": false,
+      "texture": false,
+      "animating": true,
+      "mouseMomentum": 0,
+      "mouseSpring": 0,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision highp float;\nprecision highp int;in vec3 vVertexPosition;\nin vec2 vTextureCoord;uniform sampler2D uTexture;\nuniform sampler2D uBlueNoise;uniform float uTime;uniform vec2 uResolution;uvec2 pcg2d(uvec2 v) {\nv = v * 1664525u + 1013904223u;\nv.x += v.y * v.y * 1664525u + 1013904223u;\nv.y += v.x * v.x * 1664525u + 1013904223u;\nv ^= v >> 16;\nv.x += v.y * v.y * 1664525u + 1013904223u;\nv.y += v.x * v.x * 1664525u + 1013904223u;\nreturn v;\n}float randFibo(vec2 p) {\nuvec2 v = floatBitsToUint(p);\nv = pcg2d(v);\nuint r = v.x ^ v.y;\nreturn float(r) / float(0xffffffffu);\n}const int MAX_LEVEL = 4;\nconst float TAU = 6.28318530718;float getBlueNoise(vec2 st, float delta, float size) {\nivec2 texSize = textureSize(uBlueNoise, 0);\nvec4 blueNoise = texelFetch(uBlueNoise, ivec2(fract(st * (uResolution/size)/vec2(texSize) * vec2(texSize.x/texSize.y, 1.0)) * vec2(texSize)) % texSize, 0);\nreturn mod((blueNoise.r - 0.5) * TAU + (delta * (1.0 / TAU)), TAU) / TAU - 0.005;\n}vec3 dither(vec3 color, vec2 st) {\nfloat delta = floor(uTime);\nvec2 offset = vec2(randFibo(vec2(123,16) + delta), randFibo(vec2(56,96) + delta));\nfloat noise = 0.0;\nnoise = getBlueNoise(st, delta, 2.);\nfloat dither_threshold = max(0.0001, 0.5900);\nfloat num_levels = 1.0 / dither_threshold;\nreturn floor(color * num_levels + noise) / num_levels;\n}out vec4 fragColor;void main() {\nvec2 uv = vTextureCoord;\nfloat delta = floor(uTime);\nvec4 color = texture(uTexture, uv);\ncolor.rgb = mix(color.rgb, dither(color.rgb, vTextureCoord), 0.1800);\nfragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision mediump float;in vec3 aVertexPosition;\nin vec2 aTextureCoord;uniform mat4 uMVMatrix;\nuniform mat4 uPMatrix;\nuniform mat4 uTextureMatrix;out vec2 vTextureCoord;\nout vec3 vVertexPosition;void main() {\ngl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\nvTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy;\n}"
+      ],
+      "speed": 0.24,
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "isBackground": false,
+        "texture": {
+          "src": "https://assets.unicorn.studio/media/blue_noise_med.png",
+          "sampler": "uBlueNoise"
+        }
+      },
+      "id": "0b560a47-a3b3-4f11-87c0-441441629a66",
+      "publicId": "dither"
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "states": {
+        "appear": [
+          {
+            "local": {
+              "pendingChanges": {},
+              "changeDebouncer": null,
+              "dragSession": null
+            },
+            "type": "appear",
+            "id": "1ee6be1d-8e0d-4345-9aa6-7237bce1a025",
+            "prop": "phase",
+            "transition": {
+              "ease": "linear",
+              "delay": 0,
+              "duration": 1000
+            },
+            "complete": false,
+            "progress": 0,
+            "value": 0,
+            "endValue": 1,
+            "initialized": false,
+            "breakpoints": [],
+            "loop": "none",
+            "loopDelay": 0,
+            "uniformData": {
+              "type": "1f",
+              "name": "uPhase"
+            }
+          }
+        ],
+        "scroll": [],
+        "hover": [],
+        "mousemove": []
+      },
+      "layerType": "effect",
+      "type": "glyphDither",
+      "usesPingPong": false,
+      "texture": {
+        "src": "data:image/png;base64,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",
+        "sampler": "uCustomTexture"
+      },
+      "animating": false,
+      "mouseMomentum": 0,
+      "mouseSpring": 0,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision highp float;in vec3 vVertexPosition;\nin vec2 vTextureCoord;\nuniform sampler2D uTexture;\nuniform sampler2D uSprite;\nuniform sampler2D uCustomTexture;\nuniform float uPhase;uniform vec2 uMousePos;\nuniform vec2 uResolution;vec4 applyLayerMixAlpha(vec4 color, vec4 bg, float amount) {\nreturn mix(bg, color, amount);\n}out vec4 fragColor;const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);float getLuminance(vec3 color) {\nreturn dot(color, LUMA);\n}float getGridSize() {\nreturn mix(0.05, 0.005, 1.0000);\n}vec2 getCellSize(float gridSize, float aspectRatio, float aspectCorrection) {\nfloat baseGrid = 1.0 / gridSize;\nreturn vec2(1.0 / (baseGrid * aspectRatio), 1.0 / baseGrid) * aspectCorrection;\n}vec2 getPixelatedCoord(vec2 uv, vec2 pos, vec2 cellSize) {\nvec2 offsetUv = uv - pos;\nvec2 cell = floor(offsetUv / cellSize);\nvec2 cellCenter = (cell + 0.5) * cellSize;\nreturn cellCenter + pos;\n}ivec2 getGlyphTextureSize() {\nivec2 glyphTextureSize = textureSize(uSprite, 0);glyphTextureSize = textureSize(uCustomTexture, 0);return glyphTextureSize;\n}float getGlyphHeight(ivec2 glyphTextureSize) {\nreturn float(glyphTextureSize.y);\n}float getGlyphCount(ivec2 glyphTextureSize) {\nfloat glyphHeight = getGlyphHeight(glyphTextureSize);\nreturn max(1.0, float(glyphTextureSize.x) / glyphHeight);\n}float getGlyphSelection(float luminance, float glyphCount) {\nreturn clamp(floor(luminance * glyphCount), 0.0, glyphCount - 1.0);\n}float getPhasedGlyphSelection(float luminance, float glyphCount, float gamma) {\nfloat glyphSelection = clamp(floor(luminance * glyphCount * gamma), 0.0, glyphCount - 1.0);\nfloat phaseOffset = floor(uPhase * glyphCount + 0.5);\nreturn mod(glyphSelection + phaseOffset, glyphCount);\n}vec2 getGlyphSheetUv(vec2 uv, vec2 pos, float aspectRatio, float aspectCorrection, float gridSize, float glyphHeight, float glyphSelection, float glyphCount) {\nfloat normalizedSpriteSizeX = 1.0 / glyphCount;\nfloat normalizedSpriteSizeY = 1.0;\nvec2 spriteSize = vec2(glyphHeight / aspectRatio, glyphHeight) * (gridSize / glyphHeight) * aspectCorrection;\nvec2 localOffset = mod(uv - pos, spriteSize) / spriteSize;\nfloat inset = 0.5 / glyphHeight;\nlocalOffset = clamp(localOffset, inset, 1.0 - inset);return vec2(\nglyphSelection * normalizedSpriteSizeX + localOffset.x * normalizedSpriteSizeX,\nlocalOffset.y * normalizedSpriteSizeY\n);\n}vec4 sampleGlyphColor(vec2 glyphUv) {\nvec4 glyphColor = vec4(0.0);glyphColor = texture(uCustomTexture, glyphUv);return glyphColor;\n}void main() {\nvec2 uv = vTextureCoord;\nvec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 0.0000);\nfloat aspectRatio = uResolution.x / uResolution.y;\nfloat aspectCorrection = mix(aspectRatio, 1./aspectRatio, 0.5);\nfloat gridSize = getGridSize();\nvec2 cellSize = getCellSize(gridSize, aspectRatio, aspectCorrection);\nvec2 pixelatedCoord = getPixelatedCoord(uv, pos, cellSize);\nvec4 bg = texture(uTexture, vTextureCoord);\nvec4 color = texture(uTexture, pixelatedCoord);float luminance = getLuminance(color.rgb);\nluminance = mix(luminance, 1.0 - luminance, float(0));\nfloat gamma = pow(mix(0.2, 2.2, 0.3100), 2.2);\nivec2 glyphTextureSize = getGlyphTextureSize();\nfloat glyphHeight = getGlyphHeight(glyphTextureSize);\nfloat glyphCount = getGlyphCount(glyphTextureSize);\nfloat glyphSelection = getGlyphSelection(luminance, glyphCount);\nfloat phasedGlyphSelection = getPhasedGlyphSelection(luminance, glyphCount, gamma);\nvec2 spriteSheetUV = getGlyphSheetUv(uv, pos, aspectRatio, aspectCorrection, gridSize, glyphHeight, phasedGlyphSelection, glyphCount);\nvec4 spriteColor = sampleGlyphColor(spriteSheetUV);\nfloat alpha = smoothstep(0.0, 1.0, spriteColor.r);vec3 cc = (color.rgb - glyphSelection * 0.04) * 1.4;\nvec3 col = cc;\ncol = vec3(0.0784313725490196, 0.9098039215686274, 0.5215686274509804);vec3 result = mix(mix(vec3(0.0), vec3(1.0), float(0)), col, alpha);\ncolor.rgb = result;\ncolor = applyLayerMixAlpha(color, bg, 1.0000);\nfragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\n// Copyright (c) Unicorn Studio.\n// Unauthorized copying, redistribution, or use in competing products is prohibited.\nprecision mediump float;in vec3 aVertexPosition;\nin vec2 aTextureCoord;uniform mat4 uMVMatrix;\nuniform mat4 uPMatrix;\nuniform mat4 uTextureMatrix;out vec2 vTextureCoord;\nout vec3 vVertexPosition;void main() {\ngl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\nvTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy;\n}"
+      ],
+      "phase": 0,
+      "trackMouse": 0,
+      "trackAxes": "xy",
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "isBackground": false,
+        "texture": {
+          "src": "data:image/png;base64,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",
+          "sampler": "uCustomTexture",
+          "name": "Custom glyphs"
+        }
+      },
+      "id": "18fed8b8-f748-48b1-b737-75c4d6d0d0c5",
+      "publicId": "glyph_dither"
+    },
+    {
+      "id": "__us_rp0",
+      "publicId": "render-pass",
+      "type": "custom",
+      "layerType": "effect",
+      "hideFromPipeline": true,
+      "visible": true,
+      "animating": false,
+      "aspectRatio": 1,
+      "isMask": 0,
+      "usesPingPong": false,
+      "breakpoints": [],
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float;\n/* The Unicorn Studio free-plan watermark is required. Removing, obscuring, or tampering with it is prohibited and could result in account termination. */\nin vec2 vTextureCoord;uniform sampler2D uTexture,uT1;uniform vec2 uResolution;out vec4 o;float m(float a,float b,float c){return max(min(a,b),min(max(a,b),c));}mat2 r(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}void main(){vec4 c=texture(uTexture,vTextureCoord);vec2 p=r(-.58)*(gl_FragCoord.xy-uResolution*.5),t=vec2(396.,180.),q=mod(p+t*.5,t)-t*.5;ivec2 z=textureSize(uT1,0);float a=float(z.x)/max(float(z.y),1.);vec2 u=q/vec2(142.,142./a)+.5,v=clamp(u,0.,1.);float i=step(0.,u.x)*step(0.,u.y)*step(u.x,1.)*step(u.y,1.);vec4 s=texture(uT1,v);float d=m(s.r,s.g,s.b),e=max(fwidth(d)*.75,.012),x=smoothstep(.5-e,.5+e,d)*i,h=max(smoothstep(.36,.5,d)-x,0.)*i,l=dot(c.rgb,vec3(.299,.587,.114));vec3 w=mix(vec3(.78,.84,.9),vec3(.08,.09,.11),smoothstep(.45,.72,l));o=vec4(mix(c.rgb,w,x*.16+h*.035),c.a);}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition;in vec2 aTextureCoord;uniform mat4 uMVMatrix;uniform mat4 uPMatrix;uniform mat4 uTextureMatrix;out vec2 vTextureCoord;void main(){gl_Position=uPMatrix*uMVMatrix*vec4(aVertexPosition,1.);vTextureCoord=(uTextureMatrix*vec4(aTextureCoord,0.,1.)).xy;}"
+      ],
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "isBackground": false,
+        "texture": {
+          "src": "https://assets.unicorn.studio/media/us_fwb.png",
+          "sampler": "uT1"
+        }
+      }
+    }
+  ],
+  "options": {
+    "name": "Pop Art (Remix)",
+    "fps": 60,
+    "dpi": 1.5,
+    "scale": 1,
+    "includeLogo": false,
+    "isProduction": true,
+    "flatten": false,
+    "freePlan": false,
+    "width": 1512,
+    "height": 982
+  },
+  "version": "2.2.1",
+  "id": "agYxdkCRqIFen86PYoPp",
+  "designName": "Pop Art (Remix)",
+  "designId": "8gtN77mUOpSPcxK92cGC",
+  "canvasId": "32ab95a0-d5bc-4efb-9efa-8e423d0dda10",
+  "projectName": "Pop Art (Remix)",
+  "sceneName": "Scene"
+}

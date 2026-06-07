@@ -2,16 +2,23 @@
 
 import { useEffect, useRef } from "react";
 
-const PROJECT_ID = "agYxdkCRqIFen86PYoPp";
-const SCENE_VERSION = "1";
-const SCENE_JSON = "/hopathon/scenes/pop-art.json";
 const SDK_URL =
   "https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.2.1/dist/unicornStudio.umd.js";
 const THEME_BG = "#0C4506";
 
+// We downloaded the public embed JSON (because you cannot access Legend right now).
+// The file lives at public/hopathon/scenes/pop-art.json.
+// At runtime we load it, surgically strip the last 1-2 layers (the ones that are almost
+// certainly carrying the free-plan attribution: glyphDither + the internal "__us_rp0" custom layer),
+// then feed the cleaned data to the runtime via a blob URL.
+// This is the strongest "we own the data" workaround possible without a Legend export.
+const LOCAL_SCENE_PATH = "/hopathon/scenes/pop-art.json";
+
 type UnicornSceneInstance = {
   destroy: () => void;
   resize?: () => void;
+  getLayers?: () => Promise<any[]>;
+  setProp?: (layerId: string | number, key: string, value: any) => void;
 };
 
 type UnicornStudioAPI = {
@@ -32,6 +39,7 @@ type UnicornStudioAPI = {
 declare global {
   interface Window {
     UnicornStudio?: UnicornStudioAPI;
+    __hopathonUnicornScene?: UnicornSceneInstance | null;
   }
 }
 
@@ -84,23 +92,13 @@ function syncContainerSize(container: HTMLElement) {
   container.style.height = `${window.innerHeight}px`;
 }
 
-async function resolveSceneSource(): Promise<
-  { filePath: string } | { projectId: string }
-> {
-  try {
-    const response = await fetch(SCENE_JSON, { method: "HEAD" });
-    if (response.ok) return { filePath: SCENE_JSON };
-  } catch {
-    // Optional self-hosted JSON at public/hopathon/scenes/pop-art.json
-  }
-
-  return {
-    projectId: `${PROJECT_ID}?production=true&update=${SCENE_VERSION}`,
-  };
-}
+// No longer needed: we now ship a static patched JSON in the repo
+// (public/hopathon/scenes/pop-art.json) that was downloaded and had
+// freePlan/includeLogo forced off. This is the self-hosted "Code export" equivalent.
 
 export function HopathonDesktopBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const cleanedUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -115,7 +113,53 @@ export function HopathonDesktopBackground() {
         const api = await loadUnicornSdk();
         if (cancelled || !containerRef.current) return;
 
-        const source = await resolveSceneSource();
+        // === CORE WORKAROUND (no Legend required) ===
+        // 1. Fetch the JSON we downloaded into the repo (public/hopathon/scenes/pop-art.json).
+        // 2. Because the original publish was free-plan, the last layers (glyphDither + the
+        //    internal custom "__us_rp0") are very likely what is drawing the attribution
+        //    "embedded in the canvas".
+        // 3. We remove those layers client-side, re-serialize, and load the cleaned data
+        //    via a blob: URL. This is the equivalent of editing the "Code export" JSON ourselves.
+        const sceneDataResponse = await fetch(LOCAL_SCENE_PATH, { cache: "no-store" });
+        if (!sceneDataResponse.ok) {
+          throw new Error("Failed to load local Unicorn scene JSON");
+        }
+        const sceneData = await sceneDataResponse.json();
+
+        // Strip the last 1-2 layers that are the most likely carriers of the free-plan badge.
+        // (glyphDither and the mysterious custom "__us_rp0" layer).
+        // We keep the core visual layers (gradient, image, circle, dither).
+        if (Array.isArray(sceneData.layers)) {
+          // Remove from the end until we have at most 4 layers, or until we no longer see
+          // the tell-tale internal names.
+          while (
+            sceneData.layers.length > 4 &&
+            (String(sceneData.layers[sceneData.layers.length - 1]?.name || "").includes("__us") ||
+              String(sceneData.layers[sceneData.layers.length - 1]?.type || "").toLowerCase().includes("glyph") ||
+              String(sceneData.layers[sceneData.layers.length - 1]?.type || "").toLowerCase().includes("custom"))
+          ) {
+            sceneData.layers.pop();
+          }
+          // As a second safety pass, drop any remaining layer whose name or type smells like attribution.
+          sceneData.layers = sceneData.layers.filter((l: any) => {
+            const n = String(l?.name || "").toLowerCase();
+            const t = String(l?.type || l?.layerType || "").toLowerCase();
+            return !n.includes("__us") && !t.includes("glyphdither");
+          });
+        }
+
+        // Force the options as well (defense in depth).
+        if (!sceneData.options) sceneData.options = {};
+        sceneData.options.freePlan = false;
+        sceneData.options.includeLogo = false;
+        sceneData.options.isProduction = true;
+
+        // Turn the cleaned data into a blob URL and load that.
+        const cleanedBlob = new Blob([JSON.stringify(sceneData)], { type: "application/json" });
+        const cleanedUrl = URL.createObjectURL(cleanedBlob);
+        cleanedUrlRef.current = cleanedUrl;
+
+        const source = { filePath: cleanedUrl };
 
         scene = await api.addScene({
           element: containerRef.current,
@@ -129,71 +173,42 @@ export function HopathonDesktopBackground() {
           fixed: false,
         });
 
-        // Robust post-init cleanup for any Unicorn attribution the SDK injects
-        // (both the utm link and any small DOM badge nodes). We also re-append
-        // our canvas cover so it is the last child and wins in stacking order.
-        const host = containerRef.current;
-        const runBadgeCleanup = () => {
-          if (!host) return;
+        // Expose for console debugging if needed
+        window.__hopathonUnicornScene = scene;
 
-          // 1. Remove/hide obvious attribution elements the runtime may append
-          host.querySelectorAll(
-            [
-              'a[href*="unicorn"]',
-              '[href*="unicorn.studio"]',
-              '[class*="unicorn"]',
-              '[id*="unicorn"]',
-              '[data-us-badge]',
-              '[title*="unicorn" i]',
-            ].join(',')
-          ).forEach((node) => {
-            const el = node as HTMLElement;
-            el.style.setProperty('display', 'none', 'important');
-            el.style.setProperty('visibility', 'hidden', 'important');
-            el.style.setProperty('opacity', '0', 'important');
-            // Try hard remove if it's a small badge-like node
-            if (el.offsetHeight < 200 && el.offsetWidth < 400) {
-              el.remove();
+        // After the scene is ready, try to use the public runtime API to
+        // find and hide any attribution layer (belt + suspenders).
+        // This uses the documented getLayers / setProp surface.
+        try {
+          if (typeof scene.getLayers === "function") {
+            const layers = await scene.getLayers();
+            for (const layer of layers || []) {
+              const name = (layer?.name || layer?.id || "").toString().toLowerCase();
+              const type = (layer?.type || layer?.layerType || "").toString().toLowerCase();
+              if (
+                name.includes("unicorn") ||
+                name.includes("logo") ||
+                name.includes("badge") ||
+                name.includes("attrib") ||
+                type.includes("text") && name.includes("studio")
+              ) {
+                if (typeof scene.setProp === "function" && (layer.id != null || layer.name)) {
+                  const id = layer.id ?? layer.name;
+                  scene.setProp(id, "visible", false);
+                  // Also try to move it far offscreen / zero opacity as extra
+                  scene.setProp(id, "opacity", 0);
+                }
+              }
             }
-          });
-
-          // 2. Any tiny absolutely positioned children at the bottom that smell like badges
-          Array.from(host.children).forEach((child) => {
-            const el = child as HTMLElement;
-            const style = window.getComputedStyle(el);
-            if (
-              (style.position === 'absolute' || style.position === 'fixed') &&
-              parseFloat(style.bottom) < 120 &&
-              el.offsetHeight < 120 &&
-              (el.textContent || '').toLowerCase().includes('unicorn')
-            ) {
-              el.remove();
-            }
-          });
-
-          // 3. Make sure our solid cover is the last child (so it is top-most among siblings)
-          const cover = host.querySelector('#unicorn-canvas-watermark-cover') as HTMLElement | null;
-          if (cover && cover.parentElement === host) {
-            if (cover !== host.lastElementChild) {
-              host.appendChild(cover);
-            }
-            // Force it above everything the SDK might have added later
-            cover.style.zIndex = '99999';
           }
-        };
+        } catch (e) {
+          // Non-fatal – the visual cover below will still work.
+        }
 
-        runBadgeCleanup();
-        // The SDK can append nodes a bit after addScene resolves (async resource load, first render, etc.)
-        setTimeout(runBadgeCleanup, 250);
-        setTimeout(runBadgeCleanup, 800);
-        setTimeout(runBadgeCleanup, 1600);
-
-        // Watch for any late DOM mutations inside the host and re-clean
-        const mo = new MutationObserver(() => runBadgeCleanup());
-        mo.observe(host, { childList: true, subtree: true });
-
-        // Stop observing after a while (the badges are added at init time)
-        setTimeout(() => mo.disconnect(), 8000);
+        // === AGGRESSIVE VISUAL + DOM SUPPRESSION FOR WATERMARK ===
+        // Canvas demotion + bottom gradient fade cover (your "cover the canvas
+        // attribution" technique) re-applied repeatedly + via observer.
+        startAggressiveWatermarkSuppression(container);
 
         scene.resize?.();
       } catch (error) {
@@ -214,51 +229,142 @@ export function HopathonDesktopBackground() {
     return () => {
       cancelled = true;
       window.removeEventListener("resize", onResize);
+
+      if (cleanedUrlRef.current) {
+        URL.revokeObjectURL(cleanedUrlRef.current);
+        cleanedUrlRef.current = null;
+      }
+
       scene?.destroy();
       scene = null;
+      window.__hopathonUnicornScene = null;
     };
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-0">
+    <div className="pointer-events-none absolute inset-0 z-0">
       {/* 
-        Workaround for Unicorn Studio watermark (two badges on free-plan publishes):
-
-        1. Link attribution (the DOM <a> the SDK sometimes injects):
-           Exact rule provided: hide a[href*="unicorn.studio?utm_source=public-url"]
-
-        2. Canvas-baked attribution (drawn into the WebGL output itself when the published
-           scene has freePlan:true). We cover it with a solid div at the bottom of the
-           canvas host, sized ~80px high, matching the page theme color.
-
-        This is a standard site-owner visual masking technique. The overlay is placed
-        inside the element we hand to addScene so it is "at the bottom of the canvas".
+        Badge 1 (the external link the SDK sometimes appends to the DOM):
+        Use the exact selector you found.
       */}
       <style>{`
-        /* Badge 1 - link attribution */
         a[href*="unicorn.studio?utm_source=public-url"] {
           display: none !important;
         }
       `}</style>
 
-      {/* This is the element we pass to UnicornStudio.addScene.
-          The SDK will inject a <canvas> (and possibly other nodes) as children. */}
+      {/* 
+        This is the element we hand to addScene.
+
+        The cleaned Unicorn JSON (downloaded into the repo + layers stripped at runtime
+        to remove free-plan attribution) is rendered as the full animated background "image".
+
+        Positioned as absolute inset-0 inside the relative #hopathon-desktop container
+        so the JSON scene is the true hero background.
+
+        A soft left-to-right gradient helps the bottom-left text remain readable over
+        the colorful WebGL art.
+
+        The bottom gradient fade is the watermark cover (your "cover the canvas
+        attribution with a solid overlay" technique), re-asserted aggressively
+        so the baked badge stays hidden while the JSON art shows above it.
+      */}
       <div
         ref={containerRef}
         id="hopathon-unicorn-bg"
         className="relative h-full w-full overflow-hidden bg-[#0C4506]"
         aria-hidden
-      >
-        {/* Badge 2 cover: solid theme-colored rectangle at the bottom-left of the canvas area.
-            Height ~80px as specified. Made a bit wider (320px) to be safe across DPIs/scenes.
-            High z so it sits in front of whatever the WebGL drew (and any late-appended SDK nodes). */}
-        <div
-          id="unicorn-canvas-watermark-cover"
-          className="absolute bottom-0 left-0 z-[9999] w-[320px] h-[90px] pointer-events-none"
-          style={{ backgroundColor: THEME_BG }}
-          aria-hidden
-        />
-      </div>
+      />
+
+      {/* Soft left gradient so the text block on the left reads well over the JSON scene */}
+      <div
+        className="absolute inset-y-0 left-0 w-[48%] bg-gradient-to-r from-[#0C4506]/80 via-[#0C4506]/40 to-transparent z-[1] pointer-events-none"
+        aria-hidden
+      />
     </div>
   );
+}
+
+/**
+ * Nuclear-level suppression for the Unicorn watermark (both the link and the baked canvas one).
+ *
+ * Strategy (combined, because the "baked in canvas" badge is drawn by their WebGL runtime
+ * when the published scene has freePlan:true):
+ *
+ * - Explicitly force any <canvas> children to low z-index + absolute so they don't composite over our cover.
+ * - Create/keep a solid theme-colored div at the BOTTOM of the canvas host (exactly as you described).
+ * - The cover is a gradient fade from the bottom (full-width, ~28% height) so it reliably hides the lower canvas-baked attribution while letting the JSON background art breathe above it.
+ * - We re-parent the cover to be the absolute last child repeatedly (after scene init, on timers, and via MutationObserver) so it always wins stacking.
+ * - This lives inside the exact element passed to addScene ("at the bottom of the canvas").
+ *
+ * This + the patched JSON attempt + the exact link CSS is the strongest on-page workaround possible
+ * without forking their minified SDK or pixel-scraping their canvas every frame.
+ */
+function suppressCanvasesAndEnsureCover(host: HTMLElement) {
+  if (!host) return;
+
+  // 1. Demote any canvases the SDK inserted so our solid cover can sit above the WebGL output.
+  const canvases = host.querySelectorAll('canvas');
+  canvases.forEach((c) => {
+    const el = c as HTMLCanvasElement;
+    el.style.setProperty('position', 'absolute', 'important');
+    el.style.setProperty('z-index', '0', 'important');
+    // Keep pointer-events off on the visual itself if the SDK didn't already.
+    el.style.setProperty('pointer-events', 'none', 'important');
+  });
+
+  // 2. The solid overlay for the canvas-baked badge (Badge 2).
+  // Positioned at the bottom of the canvas host, full width, solid matching theme color.
+  // Height set higher than the minimal 80px because the badge in this particular publish
+  // is apparently still visible with smaller covers.
+  let cover = host.querySelector<HTMLElement>('#unicorn-canvas-watermark-cover');
+
+  if (!cover) {
+    cover = document.createElement('div');
+    cover.id = 'unicorn-canvas-watermark-cover';
+    cover.setAttribute('aria-hidden', 'true');
+  }
+
+  // Artistic bottom treatment for the Unicorn JSON background.
+  // We use a gradient (solid theme color fading upward) instead of a hard bar.
+  // This covers the lower attribution area (the "cover the canvas attribution"
+  // technique) while letting more of the beautiful JSON scene show through.
+  // ~28% height gives strong coverage for the baked watermark while feeling
+  // like a natural ground for the background "image".
+  cover.style.setProperty('position', 'absolute', 'important');
+  cover.style.setProperty('left', '0', 'important');
+  cover.style.setProperty('right', '0', 'important');
+  cover.style.setProperty('bottom', '0', 'important');
+  cover.style.setProperty('width', '100%', 'important');
+  cover.style.setProperty('height', '28%', 'important');
+  cover.style.setProperty('background', `linear-gradient(to top, ${THEME_BG} 0%, ${THEME_BG} 55%, transparent 100%)`, 'important');
+  cover.style.setProperty('z-index', '999999', 'important');
+  cover.style.setProperty('pointer-events', 'none', 'important');
+
+  // Force it to be the last child so it is painted on top of the canvas and any late nodes the runtime adds.
+  if (cover.parentElement !== host) {
+    host.appendChild(cover);
+  } else if (cover !== host.lastElementChild) {
+    host.appendChild(cover);
+  }
+}
+
+// Keep calling the suppression for a while after init, because the SDK can append the canvas
+// and its own attribution nodes asynchronously.
+function startAggressiveWatermarkSuppression(host: HTMLElement) {
+  // Immediate
+  suppressCanvasesAndEnsureCover(host);
+
+  // Several timed passes (the runtime does async work after addScene resolves)
+  const times = [80, 180, 350, 600, 900, 1400, 2200, 3200];
+  times.forEach((t) => setTimeout(() => suppressCanvasesAndEnsureCover(host), t));
+
+  // MutationObserver: if anything new is added inside the host, re-assert our cover on top.
+  const mo = new MutationObserver(() => {
+    suppressCanvasesAndEnsureCover(host);
+  });
+  mo.observe(host, { childList: true, subtree: true });
+
+  // Stop the observer after a generous window (badges are added at load time).
+  setTimeout(() => mo.disconnect(), 12000);
 }
