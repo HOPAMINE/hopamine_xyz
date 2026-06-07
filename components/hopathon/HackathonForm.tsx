@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { motion } from "framer-motion";
 import { roboto } from "../../fonts";
+import { QuestionLabel } from "./QuestionLabel";
+import { QUESTION_LABELS } from "./questionLabels";
 
 const ENDPOINT =
   "https://script.google.com/macros/s/AKfycbzGJPXeBCGQ-GhxzmLZ-vo7fQ52oFOBYSUyMDEOwZlNQznM2ayD1CHB4_zusyZCremrKg/exec";
@@ -26,33 +27,15 @@ function FieldError({ message }: { message: string | null }) {
   );
 }
 
-type LabelSize = "default" | "wide" | "multiline";
-
-const labelHeights: Record<LabelSize, string> = {
-  default: "h-6",
-  wide: "h-[30px]",
-  multiline: "h-12",
-};
-
-function QuestionLabel({
-  src,
-  alt,
-  size = "default",
+function Label({
+  stepIndex,
+  priority = false,
 }: {
-  src: string;
-  alt: string;
-  size?: LabelSize;
+  stepIndex: number;
+  priority?: boolean;
 }) {
-  return (
-    <div className="mb-4">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        className={`w-auto max-w-full ${labelHeights[size]}`}
-      />
-    </div>
-  );
+  const label = QUESTION_LABELS[stepIndex];
+  return <QuestionLabel {...label} priority={priority} />;
 }
 
 function ContinueButton({
@@ -189,6 +172,13 @@ export function HackathonForm() {
   const inputClass = `${roboto.className} ${inputBase}`;
 
   useEffect(() => {
+    const next = QUESTION_LABELS[step + 1];
+    if (!next) return;
+    const img = new Image();
+    img.src = next.src;
+  }, [step]);
+
+  useEffect(() => {
     if (step === 0) return;
 
     let attempts = 0;
@@ -306,10 +296,7 @@ export function HackathonForm() {
         className={`relative w-full ${hopathonBg}`}
       >
         <div className="relative flex min-h-full justify-center px-5 py-16 md:px-8 md:py-24">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+          <div
             className={`flex w-full max-w-2xl flex-col items-center px-8 py-12 text-center md:px-12 md:py-14 ${hopathonBg}`}
           >
             <h2
@@ -329,7 +316,7 @@ export function HackathonForm() {
             >
               Back
             </Link>
-          </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -347,6 +334,10 @@ export function HackathonForm() {
             <img
               src="/hopathon/the-green-hackathon.svg"
               alt="The Green Hackathon"
+              width={340}
+              height={138}
+              decoding="async"
+              fetchPriority="high"
               className="h-10 w-auto max-w-[55vw] sm:h-12"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -355,6 +346,8 @@ export function HackathonForm() {
               alt="Hopamine"
               width={178}
               height={46}
+              decoding="async"
+              loading="lazy"
               className="h-7 w-auto shrink-0 sm:h-8"
             />
           </header>
@@ -368,7 +361,7 @@ export function HackathonForm() {
                 </DoneAnswer>
               ) : (
                 <>
-                  <QuestionLabel src="/hopathon/questions/your-name.svg" alt="Your Name?" />
+                  <Label stepIndex={0} priority />
                   <input
                     ref={nameRef}
                     autoFocus
@@ -403,10 +396,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/your-discord-handle.svg"
-                      alt="Your discord handle?"
-                    />
+                    <Label stepIndex={1} />
                     <input
                       ref={discordRef}
                       autoFocus
@@ -442,7 +432,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel src="/hopathon/questions/email.svg" alt="Email?" />
+                    <Label stepIndex={2} />
                     <input
                       ref={emailRef}
                       autoFocus
@@ -483,7 +473,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel src="/hopathon/questions/phone-number.svg" alt="Phone Number?" />
+                    <Label stepIndex={3} />
                     <input
                       ref={phoneRef}
                       autoFocus
@@ -521,11 +511,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/timezone-city.svg"
-                      alt="Time zone / city?"
-                      size="multiline"
-                    />
+                    <Label stepIndex={4} />
                     <input
                       ref={timezoneRef}
                       autoFocus
@@ -561,11 +547,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/are-you-a-developer.svg"
-                      alt="Are you a developer?"
-                      size="wide"
-                    />
+                    <Label stepIndex={5} />
                     <div className="space-y-2">
                       {(["Yes", "Little", "No"] as const).map((v) => (
                         <ChoiceButton
@@ -607,11 +589,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/specific-skills.svg"
-                      alt="What are your specific skills?"
-                      size="wide"
-                    />
+                    <Label stepIndex={6} />
                     <input
                       ref={skillsRef}
                       autoFocus
@@ -648,11 +626,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/have-an-idea.svg"
-                      alt="Do you already have an idea?"
-                      size="wide"
-                    />
+                    <Label stepIndex={7} />
                     <div className="space-y-2">
                       {(["Lead", "Flexible", "Join"] as const).map((v) => (
                         <ChoiceButton
@@ -690,7 +664,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel src="/hopathon/questions/teams-or-solo.svg" alt="Team or solo?" />
+                    <Label stepIndex={8} />
                     <div className="space-y-2">
                       {(["Match", "Own", "Either"] as const).map((v) => (
                         <ChoiceButton
@@ -729,10 +703,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/your-commitment.svg"
-                      alt="Your commitment."
-                    />
+                    <Label stepIndex={9} />
                     <span className={helpClass}>
                       The hackathon is for the weekend of the 13th–14th of June.
                     </span>
@@ -780,11 +751,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/find-in-teammate.svg"
-                      alt="What are you hoping to find in a team-mate?"
-                      size="multiline"
-                    />
+                    <Label stepIndex={10} />
                     <AutoTextarea
                       value={teammate}
                       onChange={setTeammate}
@@ -816,11 +783,7 @@ export function HackathonForm() {
                   </DoneAnswer>
                 ) : (
                   <>
-                    <QuestionLabel
-                      src="/hopathon/questions/looking-to-build.svg"
-                      alt="What are you looking to build?"
-                      size="multiline"
-                    />
+                    <Label stepIndex={11} />
                     <AutoTextarea
                       value={buildidea}
                       onChange={setBuildidea}
