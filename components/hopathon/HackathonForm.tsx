@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { roboto } from "../../fonts";
 import { QuestionLabel } from "./QuestionLabel";
 import { QUESTION_LABELS } from "./questionLabels";
@@ -148,7 +155,8 @@ function AutoTextarea({
   );
 }
 
-/** 0–11 = active questions, 12 = review/submit */
+/** -1 = intro, 0–11 = active questions, 12 = review/submit */
+const INTRO_STEP = -1;
 const SUBMIT_STEP = 12;
 
 function FormHeader() {
@@ -179,8 +187,7 @@ function FormHeader() {
 }
 
 export function HackathonForm() {
-  const [started, setStarted] = useState(false);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(INTRO_STEP);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -200,6 +207,7 @@ export function HackathonForm() {
   const [buildidea, setBuildidea] = useState("");
 
   const topRef = useRef<HTMLDivElement>(null);
+  const prevStepRef = useRef(step);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const nameRef = useRef<HTMLInputElement>(null);
   const discordRef = useRef<HTMLInputElement>(null);
@@ -210,6 +218,15 @@ export function HackathonForm() {
 
   const inputClass = `${roboto.className} ${inputBase}`;
 
+  function scrollFormToTop() {
+    const scrollRoot = document.getElementById("hopathon-scroll");
+    if (scrollRoot) {
+      scrollRoot.scrollTop = 0;
+    }
+    topRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+    stepRefs.current[0]?.scrollIntoView({ behavior: "auto", block: "start" });
+  }
+
   useEffect(() => {
     const next = QUESTION_LABELS[step + 1];
     if (!next) return;
@@ -217,13 +234,20 @@ export function HackathonForm() {
     img.src = next.src;
   }, [step]);
 
-  useEffect(() => {
-    if (!started || step !== 0) return;
-    nameRef.current?.focus();
-  }, [started, step]);
+  useLayoutEffect(() => {
+    const prev = prevStepRef.current;
+    prevStepRef.current = step;
+
+    if (prev !== INTRO_STEP || step !== 0) return;
+
+    scrollFormToTop();
+
+    const focusId = window.setTimeout(() => nameRef.current?.focus(), 100);
+    return () => window.clearTimeout(focusId);
+  }, [step]);
 
   useEffect(() => {
-    if (step === 0) return;
+    if (step <= 0) return;
 
     let attempts = 0;
     const id = window.setInterval(() => {
@@ -333,44 +357,9 @@ export function HackathonForm() {
     };
   }
 
-  if (!started) {
-    return (
-      <div
-        ref={topRef}
-        className={`relative min-h-dvh w-full ${hopathonBg}`}
-      >
-        <div className="relative flex min-h-dvh justify-center px-5 py-10 pb-[max(3rem,env(safe-area-inset-bottom))] md:px-8 md:py-16">
-          <div className={`w-full max-w-2xl px-2 py-4 md:px-4 md:py-6 ${hopathonBg}`}>
-            <FormHeader />
-            <p
-              className={`${roboto.className} mb-8 text-base font-semibold tracking-[-0.03em] text-[#f5f0e8]/90 sm:text-lg`}
-            >
-              Think globally · build locally
-            </p>
-            <div className="space-y-8">
-              {INTRO_SECTIONS.map((section) => (
-                <section key={section.title}>
-                  <h2
-                    className={`${roboto.className} text-xl font-bold tracking-[-0.03em] text-[#f5f0e8] sm:text-2xl`}
-                  >
-                    {section.title}
-                  </h2>
-                  <p
-                    className={`${roboto.className} mt-3 text-base leading-relaxed tracking-[-0.03em] text-white/80 sm:text-lg`}
-                  >
-                    {section.body}
-                  </p>
-                </section>
-              ))}
-            </div>
-            <ContinueButton
-              onClick={() => setStarted(true)}
-              label="Start registration →"
-            />
-          </div>
-        </div>
-      </div>
-    );
+  function startRegistration() {
+    setFieldError(null);
+    setStep(0);
   }
 
   if (done) {
@@ -415,6 +404,37 @@ export function HackathonForm() {
         <div className={`w-full max-w-2xl px-2 py-4 md:px-4 md:py-6 ${hopathonBg}`}>
           <FormHeader />
 
+          <div className={step === INTRO_STEP ? "" : "hidden"} aria-hidden={step !== INTRO_STEP}>
+            <p
+              className={`${roboto.className} mb-8 text-base font-semibold uppercase tracking-[-0.03em] text-white sm:text-lg`}
+            >
+              THINK GLOBALLY · BUILD LOCALLY
+            </p>
+            <div className="space-y-8">
+              {INTRO_SECTIONS.map((section) => (
+                <section key={section.title}>
+                  <h2
+                    className={`${roboto.className} text-xl font-bold tracking-[-0.03em] text-[#f5f0e8] sm:text-2xl`}
+                  >
+                    {section.title}
+                  </h2>
+                  <p
+                    className={`${roboto.className} mt-3 text-base leading-relaxed tracking-[-0.03em] text-white/80 sm:text-lg`}
+                  >
+                    {section.body}
+                  </p>
+                </section>
+              ))}
+            </div>
+            <div className="mt-3 flex justify-center">
+              <ContinueButton
+                onClick={startRegistration}
+                label="Start registration →"
+              />
+            </div>
+          </div>
+
+          <div className={step === INTRO_STEP ? "hidden" : ""} aria-hidden={step === INTRO_STEP}>
           <div className="space-y-8">
             {/* Step 0 — Name */}
             <div ref={setStepRef(0)}>
@@ -427,7 +447,6 @@ export function HackathonForm() {
                   <Label stepIndex={0} priority />
                   <input
                     ref={nameRef}
-                    autoFocus
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value);
@@ -893,6 +912,7 @@ export function HackathonForm() {
                 </button>
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>

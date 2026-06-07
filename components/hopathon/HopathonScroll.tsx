@@ -24,7 +24,10 @@ export function HopathonScroll({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-y-auto [-webkit-overflow-scrolling:touch]">
+    <div
+      id="hopathon-scroll"
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-y-auto [-webkit-overflow-scrolling:touch]"
+    >
       {children}
     </div>
   );

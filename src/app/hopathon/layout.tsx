@@ -24,7 +24,7 @@ export default function HopathonLayout({
           type="image/svg+xml"
         />
       ))}
-      <div className={`${roboto.className} h-full min-h-dvh bg-[#13450E] lg:min-h-full lg:bg-transparent`}>{children}</div>
+      <div className={`${roboto.className} min-h-dvh h-full bg-[#13450E]`}>{children}</div>
     </HopathonScroll>
   );
 }
