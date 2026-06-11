@@ -16,6 +16,8 @@ import { QUESTION_LABELS } from "./questionLabels";
 const ENDPOINT =
   "https://script.google.com/macros/s/AKfycbzGJPXeBCGQ-GhxzmLZ-vo7fQ52oFOBYSUyMDEOwZlNQznM2ayD1CHB4_zusyZCremrKg/exec";
 
+const DISCORD_INVITE_URL = "https://discord.gg/ESymdPMhCD";
+
 const hopathonBg = "bg-[#13450E]";
 
 const INTRO_SECTIONS = [
@@ -71,6 +73,45 @@ function ContinueButton({
     >
       {label}
     </button>
+  );
+}
+
+function FormSubmittingOverlay() {
+  return (
+    <div
+      className={`fixed inset-0 z-[60] flex items-center justify-center ${hopathonBg} px-6`}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="flex max-w-sm flex-col items-center text-center">
+        <div
+          className="h-11 w-11 animate-spin rounded-full border-2 border-white/20 border-t-white"
+          aria-hidden
+        />
+        <p
+          className={`${roboto.className} mt-5 text-xl font-bold tracking-[-0.03em] text-[#f5f0e8]`}
+        >
+          Locking you in…
+        </p>
+        <p
+          className={`${roboto.className} mt-2 text-sm font-semibold tracking-[-0.03em] text-white/65`}
+        >
+          Saving your spot. This only takes a moment.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DiscordIcon() {
+  return (
+    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+      <path
+        d="M15.245 1.175A14.81 14.81 0 0 0 11.587 0c-.162.29-.35.68-.48.99a13.705 13.705 0 0 0-4.214 0A10.68 10.68 0 0 0 6.41 0 14.855 14.855 0 0 0 2.75 1.178C.395 4.703-.242 8.14.076 11.527a15.01 15.01 0 0 0 4.591 2.347c.37-.507.7-1.047.982-1.617a9.69 9.69 0 0 1-1.546-.749c.13-.096.257-.195.38-.298 2.978 1.39 6.212 1.39 9.153 0 .124.103.252.202.38.298-.491.293-1.011.547-1.549.75.283.57.612 1.111.982 1.617a14.99 14.99 0 0 0 4.593-2.348c.376-3.965-.637-7.367-2.797-10.352ZM6.013 9.44c-.908 0-1.655-.845-1.655-1.879 0-1.034.73-1.88 1.655-1.88.924 0 1.67.846 1.655 1.88 0 1.034-.73 1.88-1.655 1.88Zm6.14 0c-.908 0-1.655-.845-1.655-1.879 0-1.034.73-1.88 1.655-1.88.924 0 1.67.846 1.655 1.88 0 1.034-.73 1.88-1.655 1.88Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 
@@ -380,12 +421,21 @@ export function HackathonForm() {
             <p
               className={`${roboto.className} mt-4 max-w-sm text-base text-white/80 md:text-lg`}
             >
-              Check Discord for your team thread before kickoff. When in doubt:
+              Join Discord for your team thread before kickoff. When in doubt:
               lead with love.
             </p>
+            <a
+              href={DISCORD_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${roboto.className} mt-8 inline-flex items-center gap-2.5 rounded-full bg-[#5865F2] px-8 py-4 text-base font-bold tracking-[-0.03em] text-white transition hover:bg-[#4752C4]`}
+            >
+              <DiscordIcon />
+              Join us on Discord
+            </a>
             <Link
               href="/hopathon"
-              className={`${roboto.className} mt-8 text-sm font-semibold uppercase tracking-[-0.03em] text-white/70 underline`}
+              className={`${roboto.className} mt-5 text-sm font-semibold uppercase tracking-[-0.03em] text-white/70 underline`}
             >
               Back
             </Link>
@@ -906,9 +956,10 @@ export function HackathonForm() {
                   type="button"
                   onClick={() => void handleSubmit()}
                   disabled={submitting}
-                  className={`${roboto.className} w-full rounded-full bg-white py-4 text-xl font-bold uppercase tracking-[-0.03em] text-[#13450E] transition-opacity disabled:opacity-50 sm:w-auto sm:px-10 sm:text-2xl`}
+                  aria-busy={submitting}
+                  className={`${roboto.className} w-full rounded-full bg-white py-4 text-xl font-bold uppercase tracking-[-0.03em] text-[#13450E] transition-opacity disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:px-10 sm:text-2xl`}
                 >
-                  {submitting ? "Sending…" : "Reserve my place!"}
+                  Reserve my place!
                 </button>
               </div>
             )}
@@ -916,6 +967,8 @@ export function HackathonForm() {
           </div>
         </div>
       </div>
+
+      {submitting ? <FormSubmittingOverlay /> : null}
     </div>
   );
 }
