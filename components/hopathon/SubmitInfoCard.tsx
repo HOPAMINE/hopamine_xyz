@@ -27,10 +27,10 @@ const CRITERIA = [
 export function SubmitInfoCard() {
   return (
     <div className={hopathonCardClassName}>
-      <p className="mb-3 text-center text-xl font-bold sm:mb-4 sm:text-2xl lg:mb-2 lg:text-base xl:text-xl">
+      <p className="mb-3 text-center text-xl font-bold sm:mb-4 sm:text-2xl">
         WHEN &amp; HOW TO SUBMIT
       </p>
-      <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed sm:space-y-3 lg:space-y-1.5 lg:text-xs xl:space-y-2 xl:text-sm">
+      <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed sm:space-y-3">
         <li>
           <span className="font-bold">THE SUBMISSION</span> — deadline is June
           14th @ 11PM EST. Upload your 90-second Loom pitch and brief written
