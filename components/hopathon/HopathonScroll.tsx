@@ -5,6 +5,9 @@ import { useEffect, type ReactNode } from "react";
 /** Root layout locks scroll; hopathon pages get their own full-viewport scroll layer. */
 export function HopathonScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
+    const scrollRoot = document.getElementById("hopathon-scroll");
+    if (scrollRoot) scrollRoot.scrollTop = 0;
+
     const html = document.documentElement;
     const body = document.body;
 

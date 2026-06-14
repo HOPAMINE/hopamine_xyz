@@ -18,6 +18,7 @@
     "lottie-react": "^2.4.1",
     "next": "16.2.6",
     "react": "19.2.4",
+    "react-chrono": "^3.3.3",
     "react-dom": "19.2.4",
     "unicornstudio-react": "^2.1.9",
     "use-places-autocomplete": "^4.0.1"
