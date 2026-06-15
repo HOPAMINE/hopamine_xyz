@@ -48,7 +48,7 @@ export default function Navbar() {
           <ProfileNavLink className="md:hidden" />
           <MobileMenu
             links={MOBILE_NAV_LINKS}
-            ticketHref="/001"
+            ticketHref="https://discord.gg/ESymdPMhCD"
             mobileTicketVariant={isHome ? "homeBlueBg" : "default"}
           />
           <ul className="hidden items-center md:flex md:flex-wrap md:justify-end md:gap-6 lg:gap-8">
@@ -81,10 +81,12 @@ export default function Navbar() {
           </li>
           <li>
             <a
-              href="/001"
+              href="https://discord.gg/ESymdPMhCD"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center bg-white px-5 py-2 text-accent-navbar transition-opacity hover:opacity-90"
             >
-              Buy Tickets
+              JOIN COMMUNITY
             </a>
           </li>
         </ul>

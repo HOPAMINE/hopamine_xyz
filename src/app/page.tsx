@@ -40,10 +40,12 @@ export default function Home() {
                 Join the Movement
               </a>
               <a
-                href="/001"
+                href="https://discord.gg/ESymdPMhCD"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center border-2 border-white bg-accent-navbar px-3 py-3 font-mono text-xs font-medium uppercase tracking-wide text-white transition-opacity hover:bg-white/15 sm:px-6 sm:text-sm md:px-8 md:py-3.5 md:text-sm"
               >
-                Buy Tickets
+                JOIN COMMUNITY
               </a>
             </div>
           </div>

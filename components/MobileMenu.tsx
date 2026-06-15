@@ -90,9 +90,11 @@ export function MobileMenu({
               <Dialog.Close asChild>
                 <a
                   href={ticketHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={ticketButtonClasses[mobileTicketVariant]}
                 >
-                  Buy Tickets
+                  JOIN COMMUNITY
                 </a>
               </Dialog.Close>
             </div>

@@ -5,7 +5,7 @@ export const PROJECT_DIRECTORY_URL =
   "https://www.hopamine.xyz/public/hackathon-directory.html";
 
 export const SUBMISSION_FORM_URL =
-  "https://form.jotform.com/261638211093049";
+  "https://form.jotform.com/261648662676067";
 
 export type HackathonMilestoneId =
   | "submission"
