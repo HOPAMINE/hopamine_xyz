@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
+import { isPortalRoute, isProjectsRoute } from "@/lib/navRoutes";
+import { PORTAL_GRADIENT_BG } from "@/lib/layoutConstants";
 import { api } from "../../convex/_generated/api";
 import { Providers } from "./providers";
 
@@ -55,6 +57,32 @@ function UserGate() {
   return <UserSyncInner />;
 }
 
+function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPortal = isPortalRoute(pathname);
+  const usePortalGradient = isPortal && !isProjectsRoute(pathname);
+
+  if (usePortalGradient) {
+    return (
+      <div className="relative min-h-dvh w-full">
+        <div
+          className={`pointer-events-none absolute inset-0 ${PORTAL_GRADIENT_BG}`}
+          aria-hidden
+        />
+        <Navbar />
+        <div className="relative">{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+      {children}
+    </>
+  );
+}
+
 export default function ClientLayout({
   children,
 }: Readonly<{
@@ -62,6 +90,7 @@ export default function ClientLayout({
 }>) {
   const pathname = usePathname();
   const isHopathon = pathname === "/hopathon" || pathname.startsWith("/hopathon/");
+  const isLanding = pathname === "/";
 
   if (isHopathon) {
     return <>{children}</>;
@@ -70,8 +99,11 @@ export default function ClientLayout({
   return (
     <Providers>
       <UserGate />
-      <Navbar />
-      {children}
+      <div
+        className={`h-dvh overflow-x-hidden ${isLanding ? "overflow-y-hidden" : "overflow-y-auto"}`}
+      >
+        <AppShell>{children}</AppShell>
+      </div>
     </Providers>
   );
 }

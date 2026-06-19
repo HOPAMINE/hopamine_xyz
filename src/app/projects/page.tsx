@@ -1,102 +1,234 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { robotoFlex, robotoMono, sortsMillGoudy } from "../../../fonts";
 import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
-import { PROJECT_TILES } from "@/lib/projectTiles";
+import {
+  HACKATHON_FIELDS,
+  HACKATHON_PROJECTS,
+  type HackathonField,
+  type HackathonProject,
+} from "@/lib/hackathonDirectory";
+import { ProjectVideoModal } from "../../../components/projects/ProjectVideoModal";
 
-function AddProjectIcon({ className }: { className?: string }) {
+type FieldFilter = HackathonField | "All";
+
+function formatProjectTitle(title: string): string {
+  return title.replace(/\b[A-Z]{2,}[A-Z0-9]*\b/g, (word) => {
+    if (word.length <= 1) return word;
+    return word.charAt(0) + word.slice(1).toLowerCase();
+  });
+}
+
+function ProjectLinkPills({
+  demoUrl,
+  liveUrl,
+  repoUrl,
+}: {
+  demoUrl?: string;
+  liveUrl?: string;
+  repoUrl?: string;
+}) {
   return (
-    <svg
-      className={`h-[22px] w-[22px] shrink-0 sm:h-6 sm:w-6 ${className ?? ""}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M12 5v14M5 12h14"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
-    </svg>
+    <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
+      <LinkButton href={demoUrl} label="Live Demo" />
+      <LinkButton href={liveUrl} label="Live App" />
+      <LinkButton href={repoUrl} label="Live Code" />
+    </div>
   );
 }
 
-const CATEGORIES = ["Projects", "Learn", "News"] as const;
+function LinkButton({
+  href,
+  label,
+}: {
+  href?: string;
+  label: string;
+}) {
+  const base = `${robotoMono.className} inline-flex items-center rounded-full border border-white/35 bg-accent-events px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors`;
+  const interactive = "hover:bg-white hover:text-accent-events";
+
+  if (!href) {
+    return (
+      <span className={`${base} pointer-events-none opacity-35`}>{label}</span>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${base} ${interactive}`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function ProjectCard({
+  fieldLabel,
+  title,
+  builder,
+  blurb,
+  liveUrl,
+  demoUrl,
+  repoUrl,
+  onOpen,
+}: Pick<
+  HackathonProject,
+  "title" | "builder" | "blurb" | "liveUrl" | "demoUrl" | "repoUrl"
+> & { fieldLabel: string; onOpen: () => void }) {
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group/card flex min-h-[15.18rem] flex-1 cursor-pointer flex-col rounded-[1.875rem] border border-white/20 bg-accent-events p-5 text-left text-white shadow-sm transition-colors duration-200 hover:bg-white sm:p-6"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="relative flex min-w-0 items-center">
+            <Image
+              src="/greenhack_tl.svg"
+              alt=""
+              width={340}
+              height={138}
+              unoptimized
+              aria-hidden
+              className="h-[1.8rem] w-auto shrink-0 transition-opacity duration-200 group-hover/card:opacity-0 sm:h-[2.1rem]"
+            />
+            <Image
+              src="/greenhack_white.svg"
+              alt="The Green Hackathon"
+              width={340}
+              height={138}
+              unoptimized
+              className="absolute left-0 top-0 h-[1.8rem] w-auto shrink-0 opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 sm:h-[2.1rem]"
+            />
+          </div>
+          <p
+            className={`${robotoMono.className} text-right text-xs font-semibold uppercase tracking-wide text-white transition-colors duration-200 group-hover/card:text-accent-events sm:text-sm`}
+          >
+            {fieldLabel}
+          </p>
+        </div>
+
+        <div className="mt-auto pt-6">
+          <p
+            className={`${robotoMono.className} text-xs font-semibold uppercase tracking-wide text-white/80 transition-colors duration-200 group-hover/card:text-accent-events/80 sm:text-sm`}
+          >
+            {builder}
+          </p>
+          <h3
+            className={`${sortsMillGoudy.className} mt-2 text-3xl normal-case leading-[1.02] tracking-[-0.05em] text-white transition-colors duration-200 group-hover/card:text-accent-events sm:text-4xl sm:tracking-[-0.06em]`}
+          >
+            {formatProjectTitle(title)}
+          </h3>
+          <p
+            className={`${robotoMono.className} mt-3 line-clamp-2 text-xs font-semibold uppercase leading-relaxed tracking-wide text-white transition-colors duration-200 group-hover/card:text-accent-events sm:text-sm`}
+          >
+            {blurb}
+          </p>
+        </div>
+      </button>
+      <ProjectLinkPills demoUrl={demoUrl} liveUrl={liveUrl} repoUrl={repoUrl} />
+    </div>
+  );
+}
 
 export default function ProjectsPage() {
-  const [selected, setSelected] = useState<(typeof CATEGORIES)[number]>(
-    "Projects",
-  );
+  const [field, setField] = useState<FieldFilter>("All");
+  const [selectedProject, setSelectedProject] = useState<HackathonProject | null>(null);
+
+  const filteredProjects = useMemo(() => {
+    return HACKATHON_PROJECTS.filter((item) => {
+      if (field !== "All" && item.field !== field) return false;
+      return true;
+    });
+  }, [field]);
+
+  const fieldFilters: FieldFilter[] = ["All", ...(Object.keys(HACKATHON_FIELDS) as HackathonField[])];
 
   return (
     <main
-      className={`min-h-dvh w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-28 pb-16 md:pt-32 md:pb-24 ${NAV_ALIGN_PAD}`}
+      className={`relative min-h-dvh w-full bg-accent-events pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
     >
-      <div className="flex w-full flex-wrap items-start justify-between gap-x-3 gap-y-3">
-        <div className="flex min-w-0 max-w-[calc(100%-3.75rem)] flex-1 flex-wrap gap-2 sm:max-w-none sm:flex-none sm:gap-3">
-          {CATEGORIES.map((label) => {
-            const isSelected = selected === label;
+      <div className="mx-auto w-full max-w-7xl">
+        <header className="max-w-3xl">
+          <h1
+            className={`${robotoFlex.className} text-3xl font-semibold tracking-[-0.02em] sm:text-4xl md:text-5xl`}
+          >
+            Projects
+          </h1>
+          <p className={`${robotoFlex.className} mt-3 text-base text-white/90 sm:text-lg`}>
+            Every idea pitched and every project shipped — browse for inspiration, find your people,
+            and jump into something in progress.
+          </p>
+        </header>
+
+        <div className="mt-6 flex w-full flex-nowrap justify-start gap-1.5 overflow-x-auto pb-1 md:mt-8 lg:overflow-visible">
+          {fieldFilters.map((filter) => {
+            const isSelected = field === filter;
+            const label = filter === "All" ? "All fields" : HACKATHON_FIELDS[filter];
+            const pillBase = `${robotoMono.className} inline-flex shrink-0 touch-manipulation items-center rounded-full border border-white/35 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3.5 sm:py-2 sm:text-[11px]`;
             return (
               <button
-                key={label}
+                key={filter}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setSelected(label)}
-                className={`inline-flex min-h-11 shrink-0 touch-manipulation items-center rounded-none border border-transparent bg-white px-3 py-2.5 font-mono text-[10px] uppercase tracking-wide text-accent-navbar transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-navbar sm:px-4 sm:py-3 sm:text-[0.9375rem] ${isSelected ? "gap-2.5" : ""}`}
+                onClick={() => setField(filter)}
+                className={
+                  isSelected
+                    ? `${pillBase} bg-white text-accent-events`
+                    : `${pillBase} bg-accent-events text-white hover:bg-white hover:text-accent-events`
+                }
               >
-                {isSelected ? (
-                  <span
-                    className="block h-2 w-2 shrink-0 rounded-full bg-accent-navbar"
-                    aria-hidden
-                  />
-                ) : null}
                 {label}
               </button>
             );
           })}
         </div>
-        <button
-          type="button"
-          aria-label="Add project"
-          className="inline-flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-none border-2 border-accent-navbar bg-white text-accent-navbar transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-navbar sm:size-auto sm:min-h-11 sm:min-w-11 sm:px-4 sm:py-3"
-        >
-          <AddProjectIcon />
-        </button>
+
+        <p className={`${robotoMono.className} mt-4 text-xs text-white/75`}>
+          {filteredProjects.length} project{filteredProjects.length === 1 ? "" : "s"}
+          {field !== "All" ? ` · ${HACKATHON_FIELDS[field]}` : ""}
+        </p>
+
+        <section aria-labelledby="projects-grid-heading" className="mt-3 w-full">
+          <h2 id="projects-grid-heading" className="sr-only">
+            All projects
+          </h2>
+          {filteredProjects.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredProjects.map((project) => (
+                <ProjectCard
+                  key={`${project.title}-${project.builder}`}
+                  fieldLabel={HACKATHON_FIELDS[project.field]}
+                  title={project.title}
+                  builder={project.builder}
+                  blurb={project.blurb}
+                  liveUrl={project.liveUrl}
+                  demoUrl={project.demoUrl}
+                  repoUrl={project.repoUrl}
+                  onOpen={() => setSelectedProject(project)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className={`${robotoFlex.className} py-8 text-sm text-white/75`}>
+              No projects in this field yet.
+            </p>
+          )}
+        </section>
       </div>
 
-      <section
-        aria-labelledby="projects-grid-heading"
-        className="mt-6 w-full md:mt-8"
-      >
-        <h2 id="projects-grid-heading" className="sr-only">
-          Project tiles
-        </h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-4 md:gap-3 lg:gap-3 xl:gap-4 [&>article]:min-w-0">
-          {PROJECT_TILES.map(({ caption, title, person }) => (
-            <article key={title} className="flex min-w-0 flex-col">
-              <div className="relative aspect-video min-h-0 w-full rounded-none border-2 border-accent-navbar bg-white md:aspect-3/2">
-                <div className="absolute bottom-0 left-0 flex max-w-[92%] flex-col items-start gap-1.5 p-3 sm:max-w-[90%] sm:p-4 md:gap-1.5 md:p-3 lg:p-4">
-                  <p className="line-clamp-3 font-mono text-xs leading-snug tracking-wide text-accent-navbar uppercase sm:text-[22px] md:text-[10px] lg:text-xs">
-                    {caption}
-                  </p>
-                  <h3 className="wrap-break-word font-serif text-[2rem] leading-[1.08] tracking-[-0.03em] text-neutral-900 normal-case line-clamp-3 md:line-clamp-2 md:text-[1rem] lg:text-[1.88rem] xl:text-[2.2rem]">
-                    {title}
-                  </h3>
-                </div>
-              </div>
-              <div className="mt-3 space-y-1 md:mt-3 md:space-y-1">
-                <p className="hidden wrap-break-word font-serif leading-snug tracking-[-0.02em] text-neutral-900 md:block md:text-[0.8rem] lg:text-[0.9rem] xl:text-[1rem]">
-                  {title}
-                </p>
-                <p className="wrap-break-word text-right font-mono text-sm tracking-wide text-neutral-700 normal-case md:text-left md:text-xs lg:text-sm">
-                  {person}
-                </p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <ProjectVideoModal
+        project={selectedProject}
+        onClose={() => setSelectedProject(null)}
+        formatTitle={formatProjectTitle}
+      />
     </main>
   );
 }

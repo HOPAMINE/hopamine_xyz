@@ -32,15 +32,17 @@ export default function HopathonPage() {
       <div className="relative z-10 flex min-h-dvh items-center justify-center px-5 py-10 sm:px-8 md:px-12">
         <div className="flex w-full max-w-xl flex-col items-center text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/hopathon/group-171.svg"
-            alt="Hopamine"
-            className="mb-4 h-7 w-auto sm:mb-6 sm:h-8"
-          />
+          <Link href="/" className="mb-4 block sm:mb-6">
+            <img
+              src="/hopathon/group-171.svg"
+              alt="Hopamine"
+              className="h-7 w-auto sm:h-8"
+            />
+          </Link>
           <p
             className={`${roboto.className} mb-3 text-base font-semibold tracking-[-0.03em] text-[#f5f0e8] sm:mb-4 sm:text-lg xl:text-xl`}
           >
-            STARTS ON JUNE 13TH @11AM EST
+            THANK YOU FOR BUILDING WITH US
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -56,10 +58,10 @@ export default function HopathonPage() {
             THINK GLOBALLY · BUILD LOCALLY
           </p>
           <Link
-            href="/hopathon/form"
+            href="/"
             className={`${roboto.className} inline-flex w-fit rounded-full bg-white px-6 py-3 text-sm font-bold tracking-[-0.03em] text-[#0C4506] transition hover:opacity-90 active:scale-[0.985] sm:px-8 sm:py-4 sm:text-base`}
           >
-            Join us
+            Back to Hopamine
           </Link>
         </div>
       </div>

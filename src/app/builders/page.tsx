@@ -1,4 +1,4 @@
-import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
+import { PORTAL_MAIN_PAD } from "@/lib/layoutConstants";
 import { BuilderCard } from "./BuilderCard";
 import {
   buildHexMosaic,
@@ -52,7 +52,7 @@ const BUILDER_TILES: BuilderTile[] = [
 export default function BuildersPage() {
   return (
     <main
-      className={`min-h-dvh w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-28 pb-16 md:pt-32 md:pb-24 ${NAV_ALIGN_PAD}`}
+      className={`min-h-dvh w-full ${PORTAL_MAIN_PAD} pb-16 md:pb-24`}
     >
       <section aria-labelledby="builders-grid-heading" className="w-full">
         <h2 id="builders-grid-heading" className="sr-only">

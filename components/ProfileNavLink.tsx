@@ -3,6 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+
+import { isGreenNavRoute } from "@/lib/navRoutes";
 
 function UserCircleIcon({ className }: { className?: string }) {
   return (
@@ -25,8 +28,14 @@ function UserCircleIcon({ className }: { className?: string }) {
   );
 }
 
-const base =
-  "inline-flex size-10 shrink-0 touch-manipulation items-center justify-center overflow-hidden rounded-full border-2 border-white/90 bg-white/10 text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:size-11";
+const profileBase =
+  "inline-flex size-10 shrink-0 touch-manipulation items-center justify-center overflow-hidden rounded-full border-2 border-white/90 bg-white/10 text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+
+const getStartedMarketing =
+  "inline-flex h-10 shrink-0 touch-manipulation items-center justify-center bg-white px-4 font-mono text-xs font-bold uppercase tracking-wide text-accent-navbar transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-5 sm:text-sm";
+
+const getStartedEvents =
+  "inline-flex h-10 shrink-0 touch-manipulation items-center justify-center bg-white px-4 font-mono text-xs font-bold uppercase tracking-wide text-accent-events transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-5 sm:text-sm";
 
 export function ProfileNavLink({
   className = "",
@@ -35,32 +44,43 @@ export function ProfileNavLink({
   className?: string;
 }) {
   const { user, isLoaded } = useUser();
+  const pathname = usePathname();
+  const isGreenNav = isGreenNavRoute(pathname);
+  const getStartedClass = isGreenNav ? getStartedEvents : getStartedMarketing;
 
   if (!isLoaded) {
     return (
       <div
-        className={`${base} ${className}`}
+        className={`${getStartedClass} ${className}`}
         role="status"
         aria-live="polite"
       >
         <span className="sr-only">Loading account</span>
-        <span className="block size-7 animate-pulse rounded-full bg-white/25 md:size-8" />
+        <span
+          className={`block h-4 w-20 animate-pulse rounded ${isGreenNav ? "bg-accent-events/20" : "bg-accent-navbar/20"}`}
+        />
       </div>
     );
   }
 
-  const href = user?.id ? "/dashboard" : "/sign-in";
-  const label =
-    user?.id ? `Account dashboard (${user.primaryEmailAddress?.emailAddress ?? "signed in"})` : "Sign in";
+  if (!user) {
+    return (
+      <Link href="/sign-in" className={`${getStartedClass} ${className}`}>
+        Get Started
+      </Link>
+    );
+  }
+
+  const label = `Account dashboard (${user.primaryEmailAddress?.emailAddress ?? "signed in"})`;
 
   return (
     <Link
-      href={href}
-      className={`${base} ${className}`}
+      href="/dashboard"
+      className={`${profileBase} ${className}`}
       aria-label={label}
-      title={user?.id ? "Dashboard" : "Sign in"}
+      title="Dashboard"
     >
-      {user?.imageUrl ? (
+      {user.imageUrl ? (
         <Image
           src={user.imageUrl}
           alt=""
