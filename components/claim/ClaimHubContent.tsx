@@ -71,7 +71,7 @@ export function ClaimHubContent() {
         <ClaimNavbar />
         <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-5 pb-16 text-center">
           <h1 className={`${roboto.className} text-3xl font-bold tracking-[-0.03em] sm:text-4xl`}>
-            Claim your hackathon spot
+            Claim your hackathon badge
           </h1>
           <p className={`${roboto.className} mt-4 text-base text-white/80`}>
             Sign in to claim your builder participation and your project on Hopamine.
@@ -93,7 +93,7 @@ export function ClaimHubContent() {
       <ClaimNavbar />
       <div className="mx-auto w-full max-w-4xl flex-1 px-5 pb-16 pt-4">
         <h1 className={`${roboto.className} text-3xl font-bold tracking-[-0.03em] sm:text-4xl`}>
-          Claim your hackathon spot
+          Claim your hackathon badge
         </h1>
         <p className={`${roboto.className} mt-3 max-w-2xl text-base text-white/80`}>
           Two separate claims for Green Hackathon participants: your builder participation, then

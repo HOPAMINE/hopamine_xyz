@@ -5,55 +5,69 @@ import Image from "next/image";
 import QRCode from "react-qr-code";
 import { formatProjectTitle } from "@/lib/formatProjectTitle";
 import { robotoMono, sortsMillGoudy } from "../../fonts";
-import { PARTICIPATION_CARD_ASPECT, PARTICIPATION_CARD_GREEN_DARK } from "./participationCardStyles";
-
-const PARTICIPATION_CARD_IMAGE = "/Group%20181.svg";
+import {
+  derivePreviewBuilderNumber,
+  deriveReferenceId,
+  formatBuilderLabel,
+} from "./participationCardIds";
+import {
+  PARTICIPATION_CARD_FOOTER_MIN_HEIGHT,
+  PARTICIPATION_CARD_GOLD,
+  PARTICIPATION_CARD_GREEN,
+  PARTICIPATION_CARD_HERO_HEIGHT,
+  PARTICIPATION_CARD_HERO_IMAGE,
+  PARTICIPATION_CARD_HERO_WIDTH,
+  PARTICIPATION_CARD_QR_SIZE,
+  PARTICIPATION_CARD_WIDTH,
+} from "./participationCardStyles";
 
 export type ClaimParticipationCardProps = {
   name: string;
   builderNumber?: number;
+  userSeed?: string;
   projectTitle?: string;
   projectBlurb?: string;
-  projectUrl?: string;
+  profileUrl?: string;
   referenceId?: string;
   claimed?: boolean;
   hideClaimedBadge?: boolean;
 };
-
-function formatBuilderNumber(builderNumber?: number) {
-  if (builderNumber === undefined) return "Builder #---";
-  return `Builder #${builderNumber.toString().padStart(3, "0")}`;
-}
-
-function formatReferenceId(builderNumber?: number, referenceId?: string) {
-  if (referenceId?.trim()) return referenceId.trim();
-  if (builderNumber === undefined) return "REFERENCE ID: #----";
-  return `REFERENCE ID: #${2030 + builderNumber}`;
-}
 
 export const ClaimParticipationCard = forwardRef<HTMLElement, ClaimParticipationCardProps>(
   function ClaimParticipationCard(
     {
       name,
       builderNumber,
+      userSeed,
       projectTitle,
       projectBlurb,
-      projectUrl,
+      profileUrl,
       referenceId,
       claimed = false,
       hideClaimedBadge = false,
     },
     ref,
   ) {
-    const displayProjectTitle = projectTitle ? formatProjectTitle(projectTitle) : "Your project";
-    const displayBlurb = projectBlurb ?? "Claim your hackathon project to show it here.";
     const displayName = name.split(" ")[0] ?? name;
-    const displayReferenceId = formatReferenceId(builderNumber, referenceId);
+    const displayProjectTitle = projectTitle
+      ? formatProjectTitle(projectTitle)
+      : "Your project";
+    const displayProjectDescription =
+      projectBlurb ?? "Claim your hackathon project to show it here.";
+    const resolvedBuilderNumber =
+      builderNumber ?? (userSeed ? derivePreviewBuilderNumber(userSeed) : undefined);
+    const displayBuilderLabel =
+      resolvedBuilderNumber !== undefined
+        ? formatBuilderLabel(resolvedBuilderNumber)
+        : "BUILDER #---";
+    const displayReferenceId =
+      referenceId?.trim() || (userSeed ? deriveReferenceId(userSeed) : "REFERENCE ID: #--------");
 
     return (
       <article
         ref={ref}
-        className="relative mx-auto w-full max-w-[17.5rem] overflow-hidden rounded-lg border border-white/25 sm:max-w-[19rem]"
+        className="relative mx-auto flex w-full max-w-full flex-col overflow-hidden rounded-[1.875rem] border border-white/25 bg-accent-events"
+        style={{ maxWidth: PARTICIPATION_CARD_WIDTH }}
       >
         {claimed && !hideClaimedBadge ? (
           <span
@@ -63,92 +77,96 @@ export const ClaimParticipationCard = forwardRef<HTMLElement, ClaimParticipation
           </span>
         ) : null}
 
-        <div className="relative w-full" style={{ aspectRatio: PARTICIPATION_CARD_ASPECT }}>
-          <Image
-            src={PARTICIPATION_CARD_IMAGE}
-            alt=""
-            fill
-            unoptimized
-            priority
-            aria-hidden
-            sizes="(max-width: 640px) 17.5rem, 19rem"
-            className="object-contain object-center"
-          />
+        <Image
+          src={PARTICIPATION_CARD_HERO_IMAGE}
+          alt=""
+          width={PARTICIPATION_CARD_HERO_WIDTH}
+          height={PARTICIPATION_CARD_HERO_HEIGHT}
+          unoptimized
+          priority
+          aria-hidden
+          className="block h-auto w-full shrink-0"
+        />
 
-          <div className="absolute inset-0 z-10">
-            <div className="absolute left-[7.5%] top-[71%] w-[38%]">
+        <div
+          className="flex shrink-0 items-stretch justify-between gap-3 mt-4 border-t border-white/25 bg-accent-events px-7 pb-6 pt-5"
+          style={{ minHeight: PARTICIPATION_CARD_FOOTER_MIN_HEIGHT }}
+        >
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
+            <div>
               <h2
-                className={`${sortsMillGoudy.className} text-[1.35rem] normal-case leading-[0.95] tracking-[-0.05em] text-white sm:text-[1.5rem]`}
+                className={`${sortsMillGoudy.className} text-[3.24rem] normal-case mt-2 leading-[0.9] tracking-[-0.05em] text-white`}
               >
                 {displayName}
               </h2>
               <p
-                className={`${robotoMono.className} mt-1 text-[8px] font-semibold uppercase tracking-wide text-white/75 sm:text-[9px]`}
+                className={`${robotoMono.className} mt-1.5 whitespace-nowrap text-[14px] font-semibold uppercase tracking-wide`}
+                style={{ color: PARTICIPATION_CARD_GOLD }}
               >
-                {formatBuilderNumber(builderNumber)}
+                {displayBuilderLabel}
               </p>
             </div>
 
-            <div className="absolute bottom-[3.5%] left-[7.5%]">
-              {projectUrl ? (
-                <div
-                  className="rounded-md p-1"
-                  style={{ backgroundColor: PARTICIPATION_CARD_GREEN_DARK }}
+            {profileUrl ? (
+              <div className="rounded-md bg-accent-events p-1">
+                <QRCode
+                  value={profileUrl}
+                  size={PARTICIPATION_CARD_QR_SIZE}
+                  bgColor={PARTICIPATION_CARD_GREEN}
+                  fgColor="#ffffff"
+                  className="h-auto w-[5.4rem]"
+                />
+              </div>
+            ) : (
+              <div className="flex h-[5.4rem] w-[5.4rem] items-center justify-center rounded-md border border-dashed border-white/25 bg-accent-events/80">
+                <span
+                  className={`${robotoMono.className} px-1 text-center text-[14px] mt-4 mb-10 font-semibold uppercase leading-tight tracking-wide text-white/45`}
                 >
-                  <QRCode
-                    value={projectUrl}
-                    size={52}
-                    bgColor={PARTICIPATION_CARD_GREEN_DARK}
-                    fgColor="#ffffff"
-                    className="h-auto w-[3.25rem]"
-                  />
-                </div>
-              ) : (
-                <div
-                  className="flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-md border border-dashed border-white/25"
-                  style={{ backgroundColor: `${PARTICIPATION_CARD_GREEN_DARK}cc` }}
-                >
-                  <span
-                    className={`${robotoMono.className} px-1 text-center text-[7px] font-semibold uppercase leading-tight tracking-wide text-white/45`}
-                  >
-                    QR
-                  </span>
-                </div>
-              )}
-            </div>
+                  QR
+                </span>
+              </div>
+            )}
+          </div>
 
-            <div className="absolute right-[6%] top-[64%] w-[42%]">
+          <div className="flex shrink-0 flex-col items-end justify-between gap-4 text-right">
+            <div className="flex flex-col items-end gap-2.5">
               <h3
-                className={`${sortsMillGoudy.className} text-base normal-case leading-[0.95] tracking-[-0.05em] text-white sm:text-lg`}
+                className={`${robotoMono.className} max-w-[8.75rem] text-[12px] font-bold uppercase leading-snug tracking-wide text-white`}
               >
                 {displayProjectTitle}
               </h3>
               <p
-                className={`${robotoMono.className} mt-1.5 line-clamp-3 text-[7px] font-semibold uppercase leading-relaxed tracking-wide text-white/80 sm:text-[8px]`}
+                className={`${robotoMono.className} max-w-[8.75rem] line-clamp-5 text-[11px] font-semibold uppercase leading-snug tracking-wide text-white`}
               >
-                {displayBlurb}
-              </p>
-              <p
-                className={`${robotoMono.className} mt-2 text-[6.5px] font-semibold uppercase tracking-wide text-white/70 sm:text-[7px]`}
-              >
-                {displayReferenceId}
+                {displayProjectDescription}
               </p>
             </div>
 
-            <div className="absolute bottom-[3.5%] right-[6%] flex flex-col items-end gap-1">
+            <div className="flex flex-col items-end gap-2.5">
               <p
-                className={`${robotoMono.className} max-w-[9rem] text-right text-[5.5px] font-semibold uppercase leading-snug tracking-wide text-white/75 sm:text-[6.5px]`}
+                className={`${robotoMono.className} text-[11px] font-semibold uppercase tracking-wide text-white/70`}
               >
-                The green internet development center.
+                {displayReferenceId}
               </p>
-              <Image
-                src="/Hopamine_text.svg"
-                alt="Hopamine"
-                width={88}
-                height={24}
-                unoptimized
-                className="h-[0.85rem] w-auto opacity-95 sm:h-[0.95rem]"
-              />
+              <div className="flex items-center gap-1.5">
+                <Image
+                  src="/icon.svg"
+                  alt=""
+                  width={128}
+                  height={128}
+                  unoptimized
+                  aria-hidden
+                  className="h-7 w-auto shrink-0 object-contain"
+                />
+                <Image
+                  src="/Hopamine_text.svg"
+                  alt="Hopamine"
+                  width={93}
+                  height={24}
+                  unoptimized
+                  className="h-5 w-auto shrink-0 object-contain"
+                />
+              </div>
             </div>
           </div>
         </div>

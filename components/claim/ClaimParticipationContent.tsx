@@ -6,10 +6,12 @@ import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "../../convex/_generated/api";
 import { getHackathonProjectByIndex } from "@/lib/hackathonDirectory";
+import { getPublicProfileUrl } from "@/lib/profileUrls";
 import { roboto, robotoMono } from "../../fonts";
 import { ClaimNavbar } from "./ClaimNavbar";
 import { ClaimParticipationCard } from "./ClaimParticipationCard";
 import { downloadParticipationCard } from "./downloadParticipationCard";
+import { deriveReferenceId } from "./participationCardIds";
 
 const inputClassName = `${robotoMono.className} w-full rounded-lg border border-white/25 bg-[#126609] px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/50`;
 
@@ -24,7 +26,7 @@ type PreviewDraft = {
   builderNumber: string;
   projectTitle: string;
   projectBlurb: string;
-  projectUrl: string;
+  profileUrl: string;
   referenceId: string;
 };
 
@@ -33,17 +35,9 @@ const emptyPreviewDraft: PreviewDraft = {
   builderNumber: "",
   projectTitle: "",
   projectBlurb: "",
-  projectUrl: "",
+  profileUrl: "",
   referenceId: "",
 };
-
-function getProjectUrl(origin: string, projectIndex: number | undefined) {
-  if (!origin) return "";
-  if (projectIndex === undefined) {
-    return `${origin}/claim/project`;
-  }
-  return `${origin}/projects?project=${projectIndex}`;
-}
 
 function parseBuilderNumber(value: string, fallback?: number) {
   const trimmed = value.trim();
@@ -56,6 +50,7 @@ export function ClaimParticipationContent() {
   const { user, isLoaded: clerkLoaded } = useUser();
   const participation = useQuery(api.hackathonParticipations.getMine);
   const projectClaim = useQuery(api.hackathonClaims.getMyProject);
+  const convexUser = useQuery(api.users.getCurrentUser, clerkLoaded && user ? {} : "skip");
   const claimParticipation = useMutation(api.hackathonParticipations.claim);
   const cardRef = useRef<HTMLElement>(null);
 
@@ -86,19 +81,20 @@ export function ClaimParticipationContent() {
     };
   }, [projectClaim]);
 
-  const defaultProjectUrl = useMemo(
-    () => getProjectUrl(siteOrigin, projectPreview?.projectIndex),
-    [siteOrigin, projectPreview?.projectIndex],
-  );
+  const defaultProfileUrl = useMemo(() => {
+    if (!siteOrigin || !convexUser?.username) return "";
+    return getPublicProfileUrl(siteOrigin, convexUser.username);
+  }, [convexUser?.username, siteOrigin]);
 
   const cardName = previewDraft.name.trim() || displayName;
+  const cardUserSeed = convexUser?.username ?? user?.id ?? "";
   const cardBuilderNumber = parseBuilderNumber(
     previewDraft.builderNumber,
     claimed ? participation?.builderNumber : undefined,
   );
   const cardProjectTitle = previewDraft.projectTitle.trim() || projectPreview?.title;
   const cardProjectBlurb = previewDraft.projectBlurb.trim() || projectPreview?.blurb;
-  const cardProjectUrl = previewDraft.projectUrl.trim() || (projectPreview ? defaultProjectUrl : undefined);
+  const cardProfileUrl = previewDraft.profileUrl.trim() || defaultProfileUrl || undefined;
   const cardReferenceId = previewDraft.referenceId.trim() || undefined;
 
   function updatePreviewDraft<K extends keyof PreviewDraft>(key: K, value: PreviewDraft[K]) {
@@ -251,14 +247,14 @@ export function ClaimParticipationContent() {
 
               <label className="block">
                 <span className={`${robotoMono.className} mb-2 block text-xs font-semibold uppercase tracking-wide text-white/70`}>
-                  QR link
+                  Profile QR link
                 </span>
                 <input
                   type="url"
-                  value={previewDraft.projectUrl}
-                  onChange={(e) => updatePreviewDraft("projectUrl", e.target.value)}
+                  value={previewDraft.profileUrl}
+                  onChange={(e) => updatePreviewDraft("profileUrl", e.target.value)}
                   className={inputClassName}
-                  placeholder={defaultProjectUrl || "https://hopamine.xyz/projects?project=0"}
+                  placeholder={defaultProfileUrl || "https://hopamine.xyz/profile/your-username"}
                 />
               </label>
 
@@ -272,9 +268,9 @@ export function ClaimParticipationContent() {
                   onChange={(e) => updatePreviewDraft("referenceId", e.target.value)}
                   className={inputClassName}
                   placeholder={
-                    cardBuilderNumber
-                      ? `REFERENCE ID: #${2030 + cardBuilderNumber}`
-                      : "REFERENCE ID: #2036"
+                    cardUserSeed
+                      ? deriveReferenceId(cardUserSeed)
+                      : "REFERENCE ID: #12345678"
                   }
                 />
               </label>
@@ -288,7 +284,7 @@ export function ClaimParticipationContent() {
             <ul className={`${robotoMono.className} mt-6 space-y-2 text-xs font-semibold uppercase tracking-wide text-white/70`}>
               <li>Your name appears on the card</li>
               <li>Builder number assigned after you claim</li>
-              <li>QR code links to your project once claimed</li>
+              <li>QR code links to your public badge profile once you set a username</li>
             </ul>
           )}
 
@@ -322,17 +318,20 @@ export function ClaimParticipationContent() {
           <p className={`${robotoMono.className} mb-3 text-xs font-semibold uppercase tracking-wide text-white/70`}>
             Live preview
           </p>
-          <ClaimParticipationCard
-            ref={cardRef}
-            name={cardName}
-            builderNumber={cardBuilderNumber}
-            projectTitle={cardProjectTitle}
-            projectBlurb={cardProjectBlurb}
-            projectUrl={cardProjectUrl}
-            referenceId={cardReferenceId}
-            claimed={claimed}
-            hideClaimedBadge={isDev}
-          />
+          <div className="inline-flex max-w-full">
+            <ClaimParticipationCard
+              ref={cardRef}
+              name={cardName}
+              builderNumber={cardBuilderNumber}
+              userSeed={cardUserSeed || undefined}
+              projectTitle={cardProjectTitle}
+              projectBlurb={cardProjectBlurb}
+              profileUrl={cardProfileUrl}
+              referenceId={cardReferenceId}
+              claimed={claimed}
+              hideClaimedBadge={isDev}
+            />
+          </div>
 
           <button
             type="button"

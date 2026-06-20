@@ -313,3 +313,49 @@ export const generateImageUrl = query({
     return await ctx.storage.getUrl(args.storageId);
   },
 });
+
+const publicBadgeValidator = v.object({
+  name: v.string(),
+  username: v.string(),
+  builderNumber: v.optional(v.number()),
+  projectTitle: v.optional(v.string()),
+  projectBlurb: v.optional(v.string()),
+});
+
+export const getPublicBadgeByUsername = query({
+  args: { username: v.string() },
+  returns: v.union(publicBadgeValidator, v.null()),
+  handler: async (ctx, args) => {
+    const username = args.username.trim().toLowerCase();
+    if (!username) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+
+    if (!user?.username) {
+      return null;
+    }
+
+    const participation = await ctx.db
+      .query("hackathonParticipations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+
+    const projectClaim = await ctx.db
+      .query("hackathonClaims")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+
+    return {
+      name: user.name,
+      username: user.username,
+      builderNumber: participation?.builderNumber,
+      projectTitle: projectClaim?.projectTitle,
+      projectBlurb: projectClaim?.blurb,
+    };
+  },
+});
