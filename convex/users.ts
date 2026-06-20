@@ -1,6 +1,27 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+function trimText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) return value.map(String).join(", ").trim();
+  if (value == null) return "";
+  return String(value).trim();
+}
+
+function normalizeSkills(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    const items = value.map((item) => trimText(item)).filter(Boolean);
+    return items.length > 0 ? items : undefined;
+  }
+  const text = trimText(value);
+  if (!text) return undefined;
+  return text
+    .split(/[,;\n]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export const getOrCreate = mutation({
   args: {
     clerkId: v.string(),
@@ -81,6 +102,11 @@ export const updateProfile = mutation({
     website: v.optional(v.string()),
     buttonColor: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
+    location: v.optional(v.string()),
+    archetypes: v.optional(v.array(v.string())),
+    skills: v.optional(v.union(v.string(), v.array(v.string()))),
+    vision: v.optional(v.string()),
+    why: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -96,8 +122,8 @@ export const updateProfile = mutation({
     }
 
     let normalizedUsername: string | undefined;
-    if (args.username !== undefined && args.username.trim() !== "") {
-      normalizedUsername = args.username.trim().toLowerCase();
+    if (args.username !== undefined && trimText(args.username) !== "") {
+      normalizedUsername = trimText(args.username).toLowerCase();
       const currentUsernameLower = (user.username ?? "").toLowerCase();
 
       if (normalizedUsername !== currentUsernameLower) {
@@ -121,15 +147,15 @@ export const updateProfile = mutation({
     }
 
     if (args.bio !== undefined) {
-      updates.bio = args.bio;
+      updates.bio = trimText(args.bio) || undefined;
     }
 
     if (args.username !== undefined) {
-      updates.username = normalizedUsername ?? (args.username.trim() || undefined);
+      updates.username = normalizedUsername ?? (trimText(args.username) || undefined);
     }
 
     if (args.website !== undefined) {
-      let website = args.website.trim() || undefined;
+      let website = trimText(args.website) || undefined;
       if (website && !website.startsWith("http://") && !website.startsWith("https://")) {
         website = "https://" + website;
       }
@@ -137,7 +163,7 @@ export const updateProfile = mutation({
     }
 
     if (args.buttonColor !== undefined) {
-      const color = args.buttonColor.trim();
+      const color = trimText(args.buttonColor);
       if (color === "" || /^#[0-9A-Fa-f]{6}$/.test(color)) {
         updates.buttonColor = color || undefined;
       } else {
@@ -149,6 +175,26 @@ export const updateProfile = mutation({
       const imageUrl = await ctx.storage.getUrl(args.storageId);
       updates.avatarUrl = imageUrl || "";
       updates.avatarStorageId = args.storageId;
+    }
+
+    if (args.location !== undefined) {
+      updates.location = trimText(args.location) || undefined;
+    }
+
+    if (args.archetypes !== undefined) {
+      updates.archetypes = args.archetypes;
+    }
+
+    if (args.skills !== undefined) {
+      updates.skills = normalizeSkills(args.skills);
+    }
+
+    if (args.vision !== undefined) {
+      updates.vision = trimText(args.vision) || undefined;
+    }
+
+    if (args.why !== undefined) {
+      updates.why = trimText(args.why) || undefined;
     }
 
     await ctx.db.patch(user._id, updates);
@@ -182,6 +228,10 @@ export const updateProfilePicture = mutation({
 
     if (!user) {
       throw new Error("User not found");
+    }
+
+    if (user.avatarStorageId) {
+      await ctx.storage.delete(user.avatarStorageId);
     }
 
     const imageUrl = await ctx.storage.getUrl(args.storageId);
@@ -223,7 +273,7 @@ export const completeOnboarding = mutation({
       name: args.name.trim(),
       location: args.location.trim(),
       archetypes: args.archetypes,
-      skills: args.skills.trim(),
+      skills: normalizeSkills(args.skills),
       vision: args.vision.trim(),
       why: args.why.trim(),
       onboardingCompletedAt: Date.now(),

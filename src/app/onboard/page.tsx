@@ -6,31 +6,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useMutation, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { PROJECT_TILES } from "@/lib/projectTiles"
+import { ARCHETYPE_BADGES, joinArchetypeList } from "@/lib/archetypes"
 import Lottie from "lottie-react"
 import globeAnimation from "../../../public/globe.json"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BADGES = [
-  { id: "seedcaster",  emoji: "🌱", title: "THE SEEDCASTER",  quote: "They plant what others haven't imagined yet." },
-  { id: "fabricant",   emoji: "⚙️",  title: "THE FABRICANT",   quote: "If it doesn't exist, they build it." },
-  { id: "mycelian",    emoji: "🍄",  title: "THE MYCELIAN",    quote: "They think in networks and grow in the dark." },
-  { id: "terraformer", emoji: "🏗️", title: "THE TERRAFORMER", quote: "They redesign the spaces we inhabit." },
-  { id: "developer",   emoji: "💻",  title: "THE DEVELOPER",   quote: "They write the tools of sovereignty." },
-  { id: "artisan",     emoji: "🎨",  title: "THE ARTISAN",     quote: "They make the future beautiful enough to want." },
-  { id: "chronicler",  emoji: "📡",  title: "THE CHRONICLER",  quote: "They make sure the work gets seen." },
-  { id: "cultivar",    emoji: "🌿",  title: "THE CULTIVAR",    quote: "They bridge the lab and the land." },
-  { id: "loomkeeper",  emoji: "🔗",  title: "THE LOOMKEEPER",  quote: "They hold the network together." },
-  { id: "verdant",     emoji: "📜",  title: "THE VERDANT",     quote: "They change the rules of the game." },
-]
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function joinList(items: string[]) {
-  if (items.length === 1) return items[0]
-  if (items.length === 2) return `${items[0]} & ${items[1]}`
-  return `${items.slice(0, -1).join(", ")} & ${items[items.length - 1]}`
-}
+const BADGES = ARCHETYPE_BADGES
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -644,7 +626,7 @@ export default function OnboardPage() {
                             onClick={() => { setTempBadges([...badges]); setOpenBadges(!openBadges) }}
                             className="font-serif text-3xl text-neutral-900 leading-snug cursor-pointer hover:opacity-70 transition-opacity group mb-3"
                           >
-                            Archetypes: <span className="text-accent-navbar">{joinList(badgeLabels)}</span>
+                            Archetypes: <span className="text-accent-navbar">{joinArchetypeList(badgeLabels)}</span>
                             <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                           </p>
                           <AnimatePresence>

@@ -362,6 +362,12 @@ export const HACKATHON_PROJECTS: HackathonProject[] = [
   }
 ];
 
+export const HACKATHON_PROJECT_COUNT = HACKATHON_PROJECTS.length;
+
+export function getHackathonProjectByIndex(index: number): HackathonProject | null {
+  return HACKATHON_PROJECTS[index] ?? null;
+}
+
 export const HACKATHON_IDEAS: HackathonIdea[] = [
   {
     "field": "Civic",

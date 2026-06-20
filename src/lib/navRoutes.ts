@@ -20,5 +20,5 @@ export function isProjectsRoute(pathname: string): boolean {
 }
 
 export function isGreenNavRoute(pathname: string): boolean {
-  return isEventsRoute(pathname) || isProjectsRoute(pathname);
+  return isEventsRoute(pathname) || isProjectsRoute(pathname) || pathname === "/dashboard";
 }

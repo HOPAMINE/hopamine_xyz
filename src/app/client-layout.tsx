@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
-import { isPortalRoute, isProjectsRoute } from "@/lib/navRoutes";
+import { isPortalRoute, isProjectsRoute, isGreenNavRoute } from "@/lib/navRoutes";
 import { PORTAL_GRADIENT_BG } from "@/lib/layoutConstants";
 import { api } from "../../convex/_generated/api";
 import { Providers } from "./providers";
@@ -13,7 +13,7 @@ import { Providers } from "./providers";
 const convexConfigured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /** Routes that are exempt from the onboarding gate. */
-const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/hopathon"];
+const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/hopathon", "/claim"];
 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
@@ -60,7 +60,7 @@ function UserGate() {
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isPortal = isPortalRoute(pathname);
-  const usePortalGradient = isPortal && !isProjectsRoute(pathname);
+  const usePortalGradient = isPortal && !isProjectsRoute(pathname) && !isGreenNavRoute(pathname);
 
   if (usePortalGradient) {
     return (
@@ -90,10 +90,20 @@ export default function ClientLayout({
 }>) {
   const pathname = usePathname();
   const isHopathon = pathname === "/hopathon" || pathname.startsWith("/hopathon/");
+  const isClaim = pathname === "/claim" || pathname.startsWith("/claim/");
   const isLanding = pathname === "/";
 
   if (isHopathon) {
     return <>{children}</>;
+  }
+
+  if (isClaim) {
+    return (
+      <Providers>
+        <UserGate />
+        {children}
+      </Providers>
+    );
   }
 
   return (

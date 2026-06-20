@@ -42,7 +42,7 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                 </Dialog.Close>
               </div>
 
-              <div className="overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
                 {embed?.type === "video" ? (
                   <div className="aspect-video w-full overflow-hidden rounded-2xl border border-white/20 bg-black">
                     <iframe
@@ -86,7 +86,16 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                   </div>
                 )}
 
-                <div className="mt-5 text-right sm:mt-6">
+                <Dialog.Title
+                  className={`${sortsMillGoudy.className} mt-5 text-3xl normal-case leading-[1.02] tracking-[-0.05em] sm:mt-6 sm:text-4xl md:text-5xl`}
+                >
+                  {formatTitle(project.title)}
+                </Dialog.Title>
+                <p className={`${robotoMono.className} mt-4 text-xs font-semibold uppercase leading-relaxed tracking-wide text-white/85 sm:text-sm`}>
+                  {project.blurb}
+                </p>
+
+                <div className="mt-auto pt-6 text-right">
                   <p
                     className={`${robotoMono.className} text-xs font-semibold uppercase tracking-wide text-white/80 sm:text-sm`}
                   >
@@ -98,14 +107,6 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                     {HACKATHON_FIELDS[project.field]}
                   </p>
                 </div>
-                <Dialog.Title
-                  className={`${sortsMillGoudy.className} mt-2 text-3xl normal-case leading-[1.02] tracking-[-0.05em] sm:text-4xl md:text-5xl`}
-                >
-                  {formatTitle(project.title)}
-                </Dialog.Title>
-                <p className={`${robotoMono.className} mt-4 text-xs font-semibold uppercase leading-relaxed tracking-wide text-white/85 sm:text-sm`}>
-                  {project.blurb}
-                </p>
               </div>
             </>
           ) : null}

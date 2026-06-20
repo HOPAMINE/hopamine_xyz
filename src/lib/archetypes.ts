@@ -9,7 +9,7 @@ export const ARCHETYPE_BADGES = [
   { id: "cultivar", emoji: "🌿", title: "THE CULTIVAR", quote: "They bridge the lab and the land." },
   { id: "loomkeeper", emoji: "🔗", title: "THE LOOMKEEPER", quote: "They hold the network together." },
   { id: "verdant", emoji: "📜", title: "THE VERDANT", quote: "They change the rules of the game." },
-] as const;
+] ;
 
 export type ArchetypeId = (typeof ARCHETYPE_BADGES)[number]["id"];
 
