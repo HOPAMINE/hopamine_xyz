@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as hackathonClaims from "../hackathonClaims.js";
+import type * as hackathonParticipations from "../hackathonParticipations.js";
+import type * as lib_hackathonProjectCount from "../lib/hackathonProjectCount.js";
+import type * as lib_projectFields from "../lib/projectFields.js";
+import type * as projects from "../projects.js";
 import type * as users from "../users.js";
 
 import type {
@@ -17,6 +22,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  hackathonClaims: typeof hackathonClaims;
+  hackathonParticipations: typeof hackathonParticipations;
+  "lib/hackathonProjectCount": typeof lib_hackathonProjectCount;
+  "lib/projectFields": typeof lib_projectFields;
+  projects: typeof projects;
   users: typeof users;
 }>;
 

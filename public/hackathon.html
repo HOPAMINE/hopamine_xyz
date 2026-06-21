@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Green Hackathon — Signup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Oswald:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --blue:#5BC2E7; --yellow:#F5E642; --black:#111111; --red:#E8302A;
+    --ink:#0c1a1f; --line:rgba(255,255,255,.16); --card:#16242b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#111111;color:#fff;font-family:Inter,system-ui,sans-serif;line-height:1.5}
+  .wrap{max-width:680px;margin:0 auto;padding:32px 20px 80px}
+  .kicker{font-family:'Instrument Serif',serif;font-weight:400;letter-spacing:.04em;font-size:20px;color:var(--blue)}
+  h1{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(34px,7vw,56px);line-height:.95;margin:8px 0 6px;letter-spacing:.01em}
+  h1 .em{color:var(--blue)}
+  .tag{font-family:'Instrument Serif',serif;font-style:italic;letter-spacing:.02em;font-size:20px;color:#cfeaf4}
+  .lede{margin:18px 0 0;color:#c7d2d6;font-size:15px}
+  .prize{margin:18px 0 4px;border:1px solid var(--line);border-top:4px solid var(--yellow);background:var(--card);padding:16px;font-size:14px;text-align:center}
+  .prize b{color:var(--yellow)}
+  .reg{font-family:Oswald,sans-serif;letter-spacing:.2em;font-size:11px;color:#7d949c;text-transform:uppercase;margin-top:28px;border-top:1px dotted var(--line);padding-top:8px}
+  fieldset{border:0;margin:22px 0 0;padding:0}
+  legend{font-family:'Instrument Serif',serif;letter-spacing:.01em;font-weight:400;font-size:22px;color:#fff;padding:0;margin-bottom:10px}
+  label.q{display:block;font-size:14px;font-weight:500;margin:16px 0 6px}
+  .help{font-size:12px;color:#8aa0a8;font-weight:400;margin-left:6px}
+  input[type=text],input[type=email],input[type=tel],textarea{width:100%;background:var(--card);border:1px solid var(--line);color:#fff;border-radius:8px;padding:11px 12px;font-size:15px;font-family:inherit}
+  input[type=text]:focus,input[type=email]:focus,input[type=tel]:focus,textarea:focus{outline:none;border-color:var(--blue)}
+  textarea{min-height:70px;resize:vertical}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .opt{position:relative}
+  .opt input{position:absolute;opacity:0;inset:0;cursor:pointer}
+  .opt span{display:block;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:10px 12px;font-size:14px;cursor:pointer;transition:.12s;height:100%}
+  .opt input:checked+span{border-color:var(--blue);background:#10303a;box-shadow:inset 0 0 0 1px var(--blue)}
+  .opt input:focus-visible+span{border-color:var(--yellow)}
+  .opt span .nm{display:block;font-weight:500}
+  .opt span .d{display:block;font-size:11px;line-height:1.35;color:#8aa0a8;margin-top:4px;font-weight:400}
+  .archnote{font-size:12px;color:#8aa0a8;margin:8px 0 0}
+  .req{color:var(--red)}
+  button{margin-top:28px;width:100%;font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:17px;background:var(--blue);color:var(--black);border:0;border-radius:10px;padding:16px;cursor:pointer}
+  button:hover{background:#7ed3f1}
+  button:disabled{opacity:.5;cursor:default}
+  .foot{margin-top:18px;font-size:12px;color:#7d949c;text-align:center}
+  .done{display:none;text-align:center;padding:60px 16px}
+  .done h2{font-family:Oswald,sans-serif;text-transform:uppercase;font-size:34px;color:var(--blue);margin:0 0 8px}
+  .err{display:none;color:var(--red);font-size:13px;margin-top:10px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="form-view">
+    <div class="kicker">Powered by Hopamine 🤞</div>
+    <h1>The <span class="em">Green</span><br/>Hackathon</h1>
+    <div class="tag">Think Globally · Build Locally</div>
+    <p class="lede">A 48-hour sprint. Build software that solves a global environmental problem, owned locally. Every archetype belongs here — you do not need to code.</p>
+    <div class="prize">🏆 <b>The winning idea gets campaigned across @Mawuli.xyz (50k) and @Hopamine.xyz on Instagram</b>, with the goal of driving 10,000 users to their solution. The first drop in a series of tools made for and by humans.</div>
+
+    <form id="signup">
+      <fieldset>
+        <legend>01 — You</legend>
+        <label class="q">Name <span class="req">*</span></label>
+        <input type="text" name="name" required />
+        <label class="q">Discord handle <span class="req">*</span><span class="help">so we can add you to your team thread</span></label>
+        <input type="text" name="discord" required />
+        <label class="q">Email <span class="req">*</span><span class="help">where we send your team + kickoff details</span></label>
+        <input type="email" name="email" required />
+        <label class="q">Phone <span class="help">optional, day-of updates only</span></label>
+        <input type="text" name="phone" />
+        <label class="q">Time zone / city <span class="req">*</span><span class="help">e.g. EST / Montreal</span></label>
+        <input type="text" name="timezone" required />
+      </fieldset>
+
+      <fieldset>
+        <legend>02 — Your skills</legend>
+        <label class="q">Can you build the tech? <span class="req">*</span><span class="help">guarantees every team has build power</span></label>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="devoverlap" value="Yes" required/><span>Yes, I can be the Developer</span></label>
+          <label class="opt"><input type="radio" name="devoverlap" value="Little"/><span>A little (no-code / light)</span></label>
+          <label class="opt"><input type="radio" name="devoverlap" value="No"/><span>No, different superpower</span></label>
+        </div>
+        <label class="q">Your specific skills or tools <span class="help">e.g. React, Figma, soil science</span></label>
+        <input type="text" name="skills" />
+      </fieldset>
+
+      <fieldset>
+        <legend>03 — How you want to play</legend>
+        <label class="q">Do you already have an idea? <span class="req">*</span></label>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="idea" value="Lead" required/><span>Yes, leading one</span></label>
+          <label class="opt"><input type="radio" name="idea" value="Flexible"/><span>Yes, but flexible</span></label>
+          <label class="opt"><input type="radio" name="idea" value="Join"/><span>No, want to join one</span></label>
+        </div>
+        <label class="q">Team or solo? <span class="req">*</span></label>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="teamsolo" value="Match" required/><span>Match me into a team</span></label>
+          <label class="opt"><input type="radio" name="teamsolo" value="Own"/><span>I'll find my own</span></label>
+          <label class="opt"><input type="radio" name="teamsolo" value="Either"/><span>Either is fine</span></label>
+        </div>
+        <label class="q">Commitment this weekend <span class="req">*</span></label>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="commitment" value="All-in" required/><span>All in 🔥</span></label>
+          <label class="opt"><input type="radio" name="commitment" value="Sessions"/><span>A few solid sessions</span></label>
+          <label class="opt"><input type="radio" name="commitment" value="Casual"/><span>Casual, dipping in</span></label>
+        </div>
+        <label class="q">What are you hoping to find in a teammate?</label>
+        <textarea name="teammate"></textarea>
+        <label class="q">What are you looking to build? <span class="help">rough ideas welcome, no wrong answers</span></label>
+        <textarea name="buildidea" placeholder="Even a one-line hunch helps us pair you well."></textarea>
+      </fieldset>
+
+      <button type="submit" id="btn">Lock me in</button>
+      <div class="err" id="err">Something went wrong. Please try again.</div>
+      <div class="foot">When in doubt: lead with love. 🤞</div>
+    </form>
+    <div class="reg">Hopamine™ · Green Hackathon · registration</div>
+  </div>
+
+  <div class="done" id="done">
+    <h2>You're in 🟢</h2>
+    <p>Check Discord for your team thread before kickoff. When in doubt: lead with love. 🤞</p>
+  </div>
+</div>
+
+<script>
+  // Posts straight to the Apps Script web app (no server config needed).
+  var ENDPOINT = "https://script.google.com/macros/s/AKfycbzGJPXeBCGQ-GhxzmLZ-vo7fQ52oFOBYSUyMDEOwZlNQznM2ayD1CHB4_zusyZCremrKg/exec";
+
+  document.getElementById('signup').addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='Sending…';
+    var fd=new FormData(e.target), data={};
+    fd.forEach(function(v,k){data[k]=v;});
+    data.timestamp=new Date().toISOString();
+    fetch(ENDPOINT,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(data)})
+      .then(function(){
+        document.getElementById('form-view').style.display='none';
+        document.getElementById('done').style.display='block';
+        window.scrollTo(0,0);
+      })
+      .catch(function(){
+        btn.disabled=false; btn.textContent='Lock me in';
+        document.getElementById('err').style.display='block';
+      });
+  });
+</script>
+</body>
+</html>

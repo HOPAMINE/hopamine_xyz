@@ -15,22 +15,15 @@ function MenuIcon() {
   );
 }
 
-const ticketButtonClasses = {
-  default:
-    "inline-flex items-center rounded-none border border-white/70 bg-white px-8 py-4 font-serif text-2xl tracking-[-0.03em] text-accent-navbar transition-opacity hover:opacity-90 sm:text-3xl",
-  homeBlueBg:
-    "inline-flex items-center rounded-none border-2 border-white bg-accent-navbar px-8 py-4 font-serif text-2xl tracking-[-0.03em] text-white transition-opacity hover:opacity-90 sm:text-3xl",
-} as const;
-
 export function MobileMenu({
   links,
-  ticketHref,
-  mobileTicketVariant = "default",
+  variant = "default",
 }: {
   links: readonly NavLinkItem[];
-  ticketHref: string;
-  mobileTicketVariant?: keyof typeof ticketButtonClasses;
+  variant?: "default" | "events";
 }) {
+  const menuBg = variant === "events" ? "bg-accent-events" : "bg-accent-navbar";
+
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -45,7 +38,7 @@ export function MobileMenu({
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-100 bg-neutral-950/50 backdrop-blur-[2px] transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
-        <Dialog.Content className="fixed inset-0 z-101 flex flex-col bg-accent-navbar outline-none transition-opacity duration-200 ease-out data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0 data-[state=open]:opacity-100">
+        <Dialog.Content className={`fixed inset-0 z-101 flex flex-col ${menuBg} outline-none transition-opacity duration-200 ease-out data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0 data-[state=open]:opacity-100`}>
           <Dialog.Title className="sr-only">Site menu</Dialog.Title>
 
           <Dialog.Close asChild>
@@ -78,24 +71,13 @@ export function MobileMenu({
                 <Dialog.Close asChild key={label}>
                   <Link
                     href={href}
-                    className="text-left font-serif text-4xl leading-[1.05] tracking-[-0.04em] transition-opacity hover:opacity-85 sm:text-5xl"
+                    className="text-left font-serif text-4xl font-bold leading-[1.05] tracking-[-0.04em] transition-opacity hover:opacity-85 sm:text-5xl"
                   >
                     {label}
                   </Link>
                 </Dialog.Close>
               ))}
             </nav>
-
-            <div className="mt-14">
-              <Dialog.Close asChild>
-                <a
-                  href={ticketHref}
-                  className={ticketButtonClasses[mobileTicketVariant]}
-                >
-                  Buy Tickets
-                </a>
-              </Dialog.Close>
-            </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

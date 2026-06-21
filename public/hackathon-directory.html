@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Green Hackathon — Project Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --ink:#111111;            /* press black */
+    --canvas:#ffffff;         /* gallery white */
+    --mist:#f4f6f7;           /* soft band */
+    --line:#e4e7e9;           /* hairline */
+    --muted:#6b7378;          /* secondary text */
+    --blue:#5BC2E7;           /* anchor blue */
+    --yellow:#F5E642;         /* solar yellow */
+    --red:#E8302A;            /* strike red */
+    --serif:'Apple Garamond','EB Garamond',Garamond,Georgia,serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --r-card:30px; --r-pill:999px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);line-height:1.45;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.82);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+  .navin{max-width:1180px;margin:0 auto;padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 3px rgba(245,230,66,.25)}
+  .brand span{color:var(--muted);font-weight:600}
+  .navlinks{display:flex;gap:26px;font-size:13px;font-weight:700}
+  .navlinks a{text-decoration:none;color:var(--ink);opacity:.55;transition:opacity .2s}
+  .navlinks a:hover{opacity:1}
+
+  /* HERO */
+  .hero{padding:74px 0 30px;text-align:center}
+  .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 18px}
+  h1{font-family:var(--serif);font-weight:400;font-size:84px;line-height:.92;letter-spacing:-.02em;margin:0}
+  h1 .grn{font-style:italic}
+  .lede{max-width:640px;margin:20px auto 0;font-size:18px;color:#3c4348}
+  .stats{display:flex;gap:30px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+  .stat b{font-family:var(--serif);font-size:30px;font-weight:500;display:block;line-height:1}
+  .stat span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+  /* SEGMENTED CONTROL */
+  .seg{display:flex;justify-content:center;margin:40px 0 8px}
+  .segwrap{display:inline-flex;background:var(--mist);border:1px solid var(--line);border-radius:var(--r-pill);padding:5px;gap:4px}
+  .segbtn{border:0;background:transparent;font-family:var(--sans);font-weight:700;font-size:14px;color:var(--muted);padding:9px 22px;border-radius:var(--r-pill);cursor:pointer;transition:all .2s;white-space:nowrap}
+  .segbtn.on{background:var(--ink);color:#fff}
+  .segsub{text-align:center;color:var(--muted);font-size:13px;margin:12px 0 0;min-height:18px}
+
+  /* CONTROLS */
+  .controls{position:sticky;top:52px;z-index:20;background:var(--canvas);padding:18px 0 14px}
+  .search{position:relative;max-width:560px;margin:0 auto}
+  .search input{width:100%;background:var(--mist);border:1px solid var(--line);border-radius:var(--r-pill);color:var(--ink);padding:13px 18px 13px 44px;font-size:15px;font-family:var(--sans)}
+  .search input::placeholder{color:#9aa3a8}
+  .search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:17px;height:17px;stroke:#9aa3a8}
+  .chips{display:flex;flex-wrap:wrap;gap:7px 18px;justify-content:center;margin:16px auto 0;max-width:880px}
+  .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--ink);background:none;border:0;cursor:pointer;opacity:.5;transition:opacity .2s}
+  .chip .rad{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--ink);transition:background .2s}
+  .chip.on{opacity:1}
+  .chip.on .rad{background:var(--blue);border-color:var(--blue)}
+
+  .count{text-align:center;color:var(--muted);font-size:12px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;margin:8px 0 0}
+
+  /* SECTION HEADER */
+  .shead{display:flex;align-items:baseline;gap:12px;margin:60px 0 22px}
+  .shead h2{font-family:var(--serif);font-weight:400;font-size:34px;letter-spacing:-.01em;margin:0}
+  .shead p{margin:0;color:var(--muted);font-size:14px}
+
+  /* SPOTLIGHT RAIL */
+  .rail{display:flex;gap:18px;overflow-x:auto;padding:4px 28px 24px;margin:0 -28px;scroll-snap-type:x mandatory}
+  .rail::-webkit-scrollbar{height:0}
+  .spot{flex:0 0 78%;max-width:540px;scroll-snap-align:start;background:var(--mist);border:1px solid var(--line);border-radius:var(--r-card);padding:30px 32px;display:flex;flex-direction:column;min-height:230px}
+  @media(min-width:760px){.spot{flex-basis:46%}}
+  .spot .ftag{align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--yellow);border-radius:var(--r-pill);padding:4px 12px;margin-bottom:16px}
+  .spot h3{font-family:var(--serif);font-weight:500;font-size:30px;line-height:1.04;margin:0 0 8px}
+  .spot .by{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .spot .bl{font-size:15px;color:#3c4348;flex:1}
+  .spot .links{margin-top:18px}
+
+  /* GRID */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+  .c{background:var(--canvas);border:1px solid var(--line);border-radius:var(--r-card);padding:24px 24px 20px;display:flex;flex-direction:column;transition:border-color .2s, transform .2s}
+  .c:hover{border-color:var(--ink);transform:translateY(-2px)}
+  .c .top{display:flex;align-items:center;gap:8px;margin-bottom:13px;flex-wrap:wrap}
+  .ftag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border:1px solid var(--line);background:var(--mist);border-radius:var(--r-pill);padding:4px 11px}
+  .seek{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--red);border:1px solid var(--red);border-radius:var(--r-pill);padding:4px 10px}
+  .c h3{font-family:var(--serif);font-weight:500;font-size:23px;line-height:1.08;margin:0 0 5px}
+  .c .by{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:11px}
+  .c .bl{font-size:14px;color:#3c4348;flex:1}
+  .links{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+  .lk{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;text-decoration:none;border-radius:var(--r-pill);padding:7px 14px;transition:transform .15s}
+  .lk:hover{transform:translateY(-1px)}
+  .lk.demo{background:var(--ink);color:#fff}
+  .lk.app{background:var(--blue);color:var(--ink)}
+  .lk.repo{background:var(--mist);color:var(--ink);border:1px solid var(--line)}
+  .lk.off{opacity:.32;pointer-events:none}
+  .contact{margin-top:15px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:#3c4348}
+  .contact b{font-weight:700}
+  .empty{text-align:center;color:var(--muted);padding:50px 0;font-size:15px}
+
+  /* FOOTER */
+  footer{margin-top:96px;border-top:1px solid var(--line);padding:38px 0 70px;text-align:center}
+  footer .fmark{font-family:var(--serif);font-style:italic;font-size:22px;margin:0 0 6px}
+  footer p{margin:0;color:var(--muted);font-size:13px}
+
+  @media(max-width:640px){
+    h1{font-size:54px}.hero{padding:48px 0 18px}
+    .navlinks{gap:16px}.shead h2{font-size:26px}
+  }
+</style>
+</head>
+<body>
+<nav>
+  <div class="navin">
+    <div class="brand"><span class="dot"></span>Powered by Hopamine</div>
+    <div class="navlinks">
+      <a href="#projects" onclick="setTab('projects')">Active Projects</a>
+      <a href="#ideas" onclick="setTab('ideas')">Idea Bank</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">The Hopamine Hackathon Directory</p>
+    <h1>Think <span class="grn">Globally,</span><br/>Build Locally</h1>
+    <p class="lede">Every idea pitched and every project shipped this weekend, in one place. Browse for inspiration, find your people, and jump into something in progress.</p>
+    <div class="stats">
+      <div class="stat"><b>37</b><span>Projects shipped</span></div>
+      <div class="stat"><b>53</b><span>Ideas pitched</span></div>
+      <div class="stat"><b>8</b><span>Fields</span></div>
+    </div>
+  </header>
+
+  <div class="seg">
+    <div class="segwrap">
+      <button class="segbtn on" id="tab-projects" onclick="setTab('projects')">Active Projects</button>
+      <button class="segbtn" id="tab-ideas" onclick="setTab('ideas')">Idea Bank</button>
+    </div>
+  </div>
+  <p class="segsub" id="segsub">Submitted and in progress. Tap a demo, open the live app, browse the code, or DM the builder to jump in.</p>
+
+  <div class="controls">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="search" id="q" placeholder="Search projects, builders, keywords…"/>
+    </div>
+    <div class="chips" id="chips"></div>
+    <p class="count" id="count"></p>
+  </div>
+
+  <section id="spotlight" style="display:none">
+    <div class="shead"><h2>Jump in</h2><p>Standouts to start with, then filter by field below.</p></div>
+    <div class="rail" id="rail"></div>
+  </section>
+
+  <section>
+    <div class="shead" id="gridhead"><h2>All projects</h2><p id="gridsub"></p></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" style="display:none">No matches. Try another field or clear the search.</div>
+  </section>
+</div>
+
+<footer>
+  <p class="fmark">Made for and by humans.</p>
+  <p>Hopamine Green Hackathon · When in doubt, lead with love.</p>
+</footer>
+
+<script>
+  var THEMES={Circular:'Sharing & Circular',Civic:'Civic & Community',Learning:'Learning & Skills',Food:'Food & Gardening',Coordination:'Coordination & Infra',DeepTech:'Deep Tech & Energy',Maps:'Maps & Sensing',Other:'Other'};
+
+  // FINAL PROJECTS — [theme,title,name,discord,blurb,app,demo,repo]
+  var PROJECTS=[["Circular","Ripe","jaeger tang","j__7__","Sign-up-free map: drop a pin to give away surplus garden produce; neighbor claims and pays peer-to-peer.","https://ripe-psi.vercel.app/","https://ripe-pitch.vercel.app/","https://github.com/jtng3/ripe"],["Civic","City Problem Reporting","Sujal Thapa","joshnua.","Report city problems to government in 30 seconds; AI dashboard triages reports and flags spam.","","https://youtube.com/shorts/wKW2nnGKVRE",""],["Maps","Cumulus","Semi Cole","semicole6475","Recommends where to deploy atmospheric water-harvesting by combining environmental and community-need data.","","https://www.loom.com/share/74b01e12385e47dda63def239eced626",""],["Civic","GREENIFI","Laura Riondet",".shalize","Every concern leads to a 'Seed' solution or help request, building a public record of fixes plus a notice generator.","https://greenifi.app","https://www.loom.com/share/74f63ff4d1454679bb5cb9d39110f3d4",""],["Circular","Myci","Laura Riondet",".shalize","Offline-first PWA for neighborhood mutual aid; each exchange grows a visible 'mycelium' map. No money, no ratings.","https://myci.app","https://www.loom.com/share/8f1070d8e56946d0be039b36adb8a809",""],["Circular","Remake","Maryam Farhan","maryam_59358","Circular-economy marketplace linking waste-givers, makers, and buyers; makers claim materials and sell what they build.","https://italic-lurch-92243192.figma.site/","https://drive.google.com/file/d/1wVSqHNFPD0_J4LbugMSIbeb0vM261mNp/view?usp=sharing",""],["Civic","GREENIFI (team)","luca kastenbaum","lucak777","Same project as Laura's GREENIFI: connects the problem, the solution, the support, and the proof in one place.","https://www.greenifi.app/","https://www.loom.com/share/a9062f06320e4c9fb7be006ed3c591ee",""],["Circular","Geospatial Barter","Ayaz Zaman","Oldpeng","Barter / mutual-aid platform; a route planner chains pickups into one trip and shows CO2, fuel, and time saved.","","https://www.loom.com/share/d3eb2939a89440a8bda511569672c8ff",""],["Learning","Green Quest","Adrian Leon","adrianleon","Pick an interest, get hands-on sustainability quests; local orgs post needs that become quests for nearby learners.","https://solarpunkhackathon-one.vercel.app/","https://drive.google.com/file/d/1U4tCI8OpbKg031bBBR19I0Cp2g56PFI5/view",""],["Food","Plant Species & Cultivation Guide","Raghav Gaur","universal2775","Identify plant species and get a cultivation guide.","","https://drive.google.com/file/d/1ucXk3gn9Km8rQH9yFAkzesj2Qsksz4re/view?usp=sharing",""],["Coordination","FORGE","Farah Mohamed Farah","faradumatin","Run community projects open-source style: claimable tasks, public logs, credit, forkable playbooks.","https://forge-eight-flame.vercel.app/","https://youtu.be/eXQymgGvorE",""],["Learning","Anima Commune","EMMA MASON","e0k1","Educational social network around herbs, plants, and fungi; share and improve gardens with AI scoring.","","",""],["Food","Plant Detector / Soil Quality","Liam bencomo","x.enzon3","Plant detector with location-based soil quality and environmental factors, plus species and edibility.","","https://drive.google.com/file/d/1R1oUZb5WAgfwW2FZCUnd8Y6lV-Pw_Muk/view?usp=sharing",""],["Civic","Proxima Parada (Next Stop)","Caroline Torres","cruella04472","Pixel-art PWA game: walk your city, find real grassroots org events, RSVP in one tap. Privacy-first.","","https://drive.google.com/file/d/19Od_C79Mr8JduVyOqIjh68qqThfCaIi8/view?usp=sharing",""],["Learning","Habi","Alishba Khattak","Alishba","AI sustainability coach: 5 questions, 3 weekly habits with CO2/water/money impact. Built for the Global South.","https://habi-coach.com/","https://www.loom.com/share/63da767226944390aff3817d90bda72d",""],["Other","Lies Make Fires","Alexis B","Lexfantasea","Chrome extension that surfaces verified climate sources at the top of search results to fight misinformation.","https://linkly.link/2kSay","https://www.loom.com/share/b24c7b5ca1bb48199a2ede9a85083507","https://github.com/glarrainv/LiesMakeFires"],["Food","Green Garden","Isaiah Jackson","ZAYJAMMAR!","Connects people with garden-able land to the know-how for regenerative gardens (food forests, pollinator plots).","","https://us06web.zoom.us/clips/share/dLcXOA0gTNKTHsPWqdvKfA",""],["Learning","Educational AI Experience","Josue Saavedra","josue1.8.9","Eco-friendly educational AI experience that deepens understanding of topics you choose.","","https://www.loom.com/share/104b6ea20fa34c9a93b6915c0afb5ffa",""],["Maps","EcoEye / EcoProof","Arthur Allen","7kz.pinguin","Donated old phones become a LoRa mesh detecting fire, chainsaws, and intruders on indigenous land, plus a legal proof chain.","","https://youtu.be/gOxndoEPUJE",""],["Food","Stakes (Green Recipe Swap)","Basil Wright","grasscrest","Paste a recipe; it scores each ingredient on 4 environmental measures and suggests greener swaps. Runs client-side.","https://green-recipe-swap.pages.dev/","https://youtu.be/6vHnh1VhpnY",""],["Civic","Community Observations to Action","Evan Kilgard","Evan kill >:^(","Turns community observations into collective action; AI organizes input and surfaces shared priorities on a map.","","https://www.loom.com/share/253ae087b7594d9f9d7f3fd2df6e82f1",""],["Circular","LoCo","Nikolay Baruh","ribss.","Social app to connect your local green community: organize events and find circular-economy businesses.","","https://www.youtube.com/watch?v=JM-VHlRzJ0I",""],["Learning","Solarpunk City Sandbox Game","Nyx Sardonic","candlelitworkshop","3D sandbox: design cities from eco-modules that reward symbiosis; teaches solarpunk systems thinking.","","https://canva.link/t0222ypof4566mk",""],["Civic","Commons","Pedro Rodrigues","@Prodr","One shared map for the informal life of a city: drop a pin for anything you offer or need. No ads, no algorithm.","https://commons-yodait22-cmyks-projects.vercel.app","https://www.loom.com/share/75403ced6aca41cc9cd6113bb5ebce61",""],["Circular","Heartlight (Wish Exchange Portal)","Atlas Morphoenix","atlasmorphoenix","Gift-economy 'Wish Exchange Portal' with an open ledger; cast wishes and fulfill aligned exchanges.","https://heartlight.atlasisland.co/","https://www.loom.com/share/246cd8e39adb4c3290f8c815486609d1","https://github.com/blubuttxrfly/heartlight-collective.git"],["Food","EDEN Commons","Daniel Amado","daniel.acl9","Living almanac: enter location and crop, get a 12-month calendar blending climate data and community knowledge.","","https://www.youtube.com/watch?v=Q3hLeN6GExw",""],["Coordination","Open Bus Stop","Nathaniel Wert","n89529","Prototype bus-stop display from parsed GTFS data; open-sources the electrical, CAD, and code.","","https://youtube.com/shorts/O9DhvrFyZKQ?feature=share","https://github.com/N8BWert/open-bus-stop"],["Circular","ChronoShare","Ayaan B","jungl3master","Solarpunk time-bank: trade skills in hours, transparent ledger, plus a solidarity hours pool. 11 languages.","","https://www.loom.com/share/4f18e9f571b44247b990502b00052f04",""],["Learning","AptiPlant","Samuel Ngandu","mr_nooby2845","Experts map their journey into visual roadmaps; learners remix them to enter eco-innovation.","https://project-oktaj.vercel.app","https://www.youtube.com/watch?v=S6t1aXeSvr0",""],["Learning","Grass Roots","Ethan Barsketis","etbars","Marketplace for hands-on land-based learning; AI 'Residency Studio' matches a skill to a host site and drafts a course.","https://grassroots.earth","https://drive.google.com/file/d/1rjcJhd56aFWVcyNmyRUfRhbtcGR342Um/view?usp=sharing",""],["DeepTech","MutaScore","Ishani Bakshi","fckthjsnsjwn","AI tool ranks PETase enzyme mutations (ESM-2), narrowing millions of options to the best lab candidates.","https://lambent-pastelito-800a8f.netlify.app/","https://youtu.be/tihXpi2wXuc",""],["Maps","Visible","Natasha Silvestre","mycarbonai","Photograph a working local eco-initiative; AI maps it and generates a how-to guide to replicate it.","https://canva.link/visible-io","https://canva.link/visible-io",""],["Circular","BarangaySwap","Exzekel Ablo","Exzekel","Hyperlocal swap for surplus items, skills, and resources; built for low-connectivity areas. Tagalog and English.","","https://drive.google.com/file/d/1RYz3dqQ-xujUCaAexPkds9ex1gLBqcIt/view?usp=drivesdk",""],["Coordination","AI-Agent Memory as Authentication","Marcellus Wijesinghe","eraldatu","Concept: use an AI agent's lack of memory for verification without sensitive data, plus decentralized storage.","","https://www.loom.com/share/a71d30af80cb4a6fa357ddd6621ec0d8",""],["Civic","Chicago Air-Quality Companion","Jerry B","OlMackyTerrahawk","Track Chicago neighborhood air quality (AirNow plus Chicago Health Atlas) in plain language, with civic actions.","","https://www.loom.com/share/91fc4d61406f43b2bfc2610106cf51aa",""],["Circular","Karma","Nykaela Burks","cicirokk","Neighborhood mutual-help app: post small projects and earn karma points for showing up.","","https://youtu.be/z7NJS_dktT8",""],["Circular","Vrub (Virtual Re-Use Bin)","Nai Xun","ankhpercent","Material-sharing for eco-conscious creatives: share what you have, find what you need, every item free.","","https://youtu.be/RdBhFZ-w_3E",""]];
+
+  // IDEA BANK — [theme,title,name,discord,blurb,seeking]
+  var IDEAS=[["Civic","Local Volunteer Matching","Caroline Torres","cruella04472","Swipe on nearby orgs, events, and people to volunteer with. Proximity plus one-tap yes, Tinder to get involved.",0],["Learning","Building Design Sandbox","Nyx Sardonic","candlelitworkshop","A game-like 3D tool to design buildings, intuitive for everyone. Figma meets Toco World.",0],["Circular","Mending-Shrine (offline repair)","Jeffrey Krapf","Jev2741","Offline, zero-hardware repair assistant that walks you through fixes and refuses to hallucinate advice.",0],["Civic","Local Gov Meeting Tracker","Stephen Hnilica","stephehnilica","Scrapes and archives local government agendas; alerts on fossil fuel, data center, or solar initiatives.",0],["Civic","Chicago Air-Quality Tool","Jerry B","OlMackyTerrahawk","Maps neighborhood pollution plus safe-air refuges and emergency plans for high-risk residents.",0],["Food","Plant/Herb AI ID","Emma Mason","E01k","Snap a plant to learn its identity and history; share findings with the community.",0],["Coordination","Trust & Reputation System","Marcellus Wijesinghe","eraldatu","Personal/group organization that tracks contribution and builds reputation while respecting privacy.",0],["Coordination","Project Merging","Ryan Markwart","","Connect builders and idea-owners so duplicate projects collaborate instead of compete.",0],["Circular","Re-Use Material App","Nai Xun","Ankhpercent","Catalogue used items and electronics to share; social credits plus decentralized e-waste disposal.",0],["Food","SeedBurst","Aratrika Das","fourstars__","Shake-to-plant seed products plus a QR refill model. Rewilding as easy as seasoning food.",0],["Coordination","Off-Grid Text Networks","Mariah Gardner","marlesdickins","Web app plus IKEA-style build guides to set up off-grid community text networks.",0],["Circular","AR Clothing Repair","Jonathan Herrera","dumbowumbo","AR plus AI to fix, alter, and repurpose clothes and cut overconsumption.",0],["Civic","Tainha AI (civic phonebooth)","Guilherme Mazetto","guilherme_mazetto","A public AI phonebooth for neighborhood feedback plus local history and culture.",0],["Maps","Sustainable Community Hub Map","Nikolay Baruh","ribss.","A map and community center to find events, circular businesses, farmers, and like minds locally.",0],["Learning","Teacher-in-Residence","Rowdy Klein","Gohabitat.earth","Connect host landscapes to traveling teachers; students learn hands-on, real-world skills.",0],["Circular","Ripe (neighbor produce)","jaeger tang","j__7__","Map of backyard surplus; one-tap claim and pay, no cut taken. Saturates one block at a time.",0],["Circular","Contribution Ledger","Isidoros Manolas","iz2i.","Neighborhood exchange with real-cost, non-transferable, decaying credits to curb overproduction.",0],["Circular","BarangaySwap","Exzekel Ablo","Exzekel","Hyperlocal swap of surplus items and skills, built for low-connectivity neighborhoods.",0],["Civic","Community Care Webapp","Nykaela Burks","cicirokk","Discover local projects, share skills, volunteer, and build trust through community work.",0],["Maps","Visible","Natasha Silvestre","mycarbonai","Photo a positive eco-action; AI maps it. A live map of what is already working locally.",0],["Learning","AptiPlant","Samuel Ngandu","mr_nooby2845","roadmap.sh for the planet: AI routes a custom skills roadmap for climate builders.",0],["Circular","iGotchu","Oscar Sharp","Oscartocin","AI need/offer matching for community mutual aid.",0],["Civic","Rooted","Connor Clapson","ConnorClutchClapson","Communities report, discuss, and vote on local issues; AI turns input into actionable insight.",0],["Coordination","FORGE","Farah Mohamed Farah","faradumatin","Build real-world projects like open source: claimable tasks, public logs, credit, forkable playbooks.",0],["DeepTech","PETase Enzyme Optimizer","Ishani Bakshi","fckthjsnsjwn","ML model ranks enzyme mutations that degrade plastic faster, skipping months of wet-lab.",0],["DeepTech","Cumulus (atmospheric water)","Semi Cole","semicole6475","Data platform that sites atmospheric water-harvesting where need and viability are highest.",0],["Food","EDEN Commons","Daniel Amado","daniel.acl9","A living agri-almanac from regional and ancestral knowledge; AI organizes, people own it.",0],["Food","Growing Green","Isaiah Jackson","ZAYJAMMAR!","Analyzes your land, climate, and soil to recommend native plants and links local nurseries.",0],["Learning","SolarPunk Farm (game)","Ethan Barsketis","Etbars","Cozy AI farming game teaching real permaculture and homesteading with voice NPCs.",0],["Circular","Urban Waste to Maker Materials","Maryam Farhan","maryam_59358","Log waste; a hub sorts it; makers claim materials and post back what they built.",0],["DeepTech","Green Gauge","Paulette Meso","dicha_.","Energy-intensity benchmarking for SMEs with ranked, payback-aware fixes.",0],["Learning","Habi","Alishba Khattak","Alishba","Local AI sustainability companion with weekly challenges and a shared community impact board.",0],["Civic","GREENIFI","luca kastenbaum","lucak777","Turn concern into action via Red Cases (Land/Air/Water) plus sign-on statements to officials.",1],["Other","Misinformation Source-Checker","Alexis B","Absolutemenace420","Chrome add-on surfacing 3 verified local sources (academic/gov/private) on eco searches.",0],["Food","Eco Recipe Alternatives","Basil Wright","Grasscrest","Parses recipes and suggests lower-impact ingredient swaps with water and land comparisons.",0],["Food","Plant Edibility Scanner","Raghav Gaur","universal2775","Scan a plant to check edibility and learn how to cultivate it in your local conditions.",0],["Civic","NYC Citizen-Concern Map","Sujal Thapa","joshnua.","Geolocated citizen concern reporting with a direct, AI-assisted channel to city workers.",0],["Coordination","Bus-Stop Displays (LoRa)","Nathaniel Wert","N89529","Cheap low-power displays plus Raspberry Pi towers relaying bus times over LoRa radio.",0],["Circular","Neighborhood Barter","Frost Zaman","Oldpeng","Proximity barter map with route optimization and trust scores; shows fuel, CO2, and time saved.",0],["Learning","Mission-Based Learning","Adrian Leon","adrianleon","Turn any interest into sustainable real-world missions feeding a shared atlas.",0],["Maps","Sound of the Earth","Aisha Nama","A_nama","Crowdsourced audio map scoring biophony vs noise into a live Earth Health map.",0],["Maps","Citizen Climate-Data for Planning","Olivier poupier","astiktelette","Crowd and open data on local temps and canopy to help planners make neighborhoods walkable.",0],["Food","Food-Yield Maximizer","Thomas Wright","Pennyfasha_04528","Three inputs (size, date, location) returns the max food a space can grow plus a succession plan.",0],["Other","Genuine-Connection CRM","Katrina Anastasia","katrina.anastasia","A no-followers CRM to actually stay connected with people you meet. Idea-owner needs a tech builder.",1],["DeepTech","Plastic-Eating Mushrooms","Parinita Haldar","perry979797","A replicable local system to clean, shred, and fungally decompose community plastic waste. Needs a prototyping team.",1],["Civic","FieldSignal AI","Trishna Redd","nt80p","Turns responder photos and voice into structured incident reports during disasters.",0],["DeepTech","Pollution-Data Infrastructure","Stephen Yaroch","Bigsteve420","Automates env compliance docs and mines them into a predictive pollution dataset. Needs a schema/insights builder.",1],["Coordination","Decentralized Research Platform","Clement Castellon","clemspace","Adapting a peer-reviewed decentralized research method for the Hopamine community.",0],["Learning","SolarPunk Guide App","Nando Manz","nandomango1","A green-AI guide to living solarpunk values: knowledge, checklists, habits, news, kids mode. Visionary, needs coders.",1],["Circular","ChronoShare (timebank)","Ayaan B","jungl3master","Peer-to-peer timebanking; one hour helped equals one hour owed. Non-extractive mutual aid.",0],["Circular","Commons","Pedro Rodrigues","@Prodr","Tap plus, drop a pin, leave a note. Makes the informal sharing city visible. No data harvesting.",0],["Circular","Wish Portal / Heartlight","Atlas Morphoenix","atlasmorphoenix","Gift-economy coordination: cast a wish, get matched with nearby skills, tools, space, or funding.",0],["Learning","GreenHabits AI","Alishba Khattak","Alishba","AI coach focused on behavior change: weekly green challenges plus measurable impact.",0]];
+
+  var SPOTLIGHT=["Ripe","Commons","FORGE","Myci","Cumulus","MutaScore","Grass Roots","Stakes (Green Recipe Swap)"];
+
+  var state={tab:'projects',field:'All',q:''};
+
+  function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function btn(url,cls,label){
+    if(!url) return '<span class="lk '+cls+' off">'+label+'</span>';
+    return '<a class="lk '+cls+'" href="'+esc(url)+'" target="_blank" rel="noopener">'+label+'</a>';
+  }
+  function projLinks(r){return btn(r[6],'demo','▶ Demo')+btn(r[5],'app','↗ Live')+btn(r[7],'repo','&lt;/&gt; Code');}
+
+  // build chips
+  var chips=document.getElementById('chips');
+  function buildChips(){
+    chips.innerHTML='';
+    ['All'].concat(Object.keys(THEMES)).forEach(function(k){
+      var b=document.createElement('button');b.className='chip'+(state.field===k?' on':'');
+      b.innerHTML='<span class="rad"></span>'+(k==='All'?'All fields':THEMES[k]);
+      b.onclick=function(){state.field=k;render();};
+      chips.appendChild(b);
+    });
+  }
+  document.getElementById('q').addEventListener('input',function(e){state.q=e.target.value.toLowerCase();render();});
+
+  window.setTab=function(t){state.tab=t;state.field='All';state.q='';document.getElementById('q').value='';
+    document.getElementById('tab-projects').classList.toggle('on',t==='projects');
+    document.getElementById('tab-ideas').classList.toggle('on',t==='ideas');
+    document.getElementById('segsub').textContent = t==='projects'
+      ? 'Submitted and in progress. Tap a demo, open the live app, browse the code, or DM the builder to jump in.'
+      : 'Pitched at kickoff, for inspiration. See one you love? DM the builder or claim it in #team-finder.';
+    render();
+  };
+
+  function matches(r){
+    if(state.field!=='All'&&r[0]!==state.field)return false;
+    if(state.q){var hay=(r[1]+' '+r[2]+' '+r[4]+' '+THEMES[r[0]]).toLowerCase();if(hay.indexOf(state.q)<0)return false;}
+    return true;
+  }
+
+  function render(){
+    buildChips();
+    var grid=document.getElementById('grid');grid.innerHTML='';
+    var spotSec=document.getElementById('spotlight');var rail=document.getElementById('rail');
+    var data=state.tab==='projects'?PROJECTS:IDEAS;
+    var n=0;
+
+    // spotlight rail (projects tab, only when unfiltered)
+    if(state.tab==='projects'&&state.field==='All'&&!state.q){
+      rail.innerHTML='';spotSec.style.display='block';
+      SPOTLIGHT.forEach(function(t){
+        var r=PROJECTS.find(function(x){return x[1]===t;});if(!r)return;
+        var d=document.createElement('div');d.className='spot';
+        d.innerHTML='<span class="ftag">'+esc(THEMES[r[0]])+'</span>'
+          +'<h3>'+esc(r[1])+'</h3><div class="by">'+esc(r[2])+' · @'+esc(r[3])+'</div>'
+          +'<div class="bl">'+esc(r[4])+'</div><div class="links">'+projLinks(r)+'</div>';
+        rail.appendChild(d);
+      });
+    } else { spotSec.style.display='none'; }
+
+    document.querySelector('#gridhead h2').textContent = state.tab==='projects'?'All projects':'Idea bank';
+    document.getElementById('gridsub').textContent = state.tab==='projects'
+      ? 'Everything shipped this weekend.' : 'Open pitches anyone can build onto. ✋ = actively looking for teammates.';
+
+    data.forEach(function(r){
+      if(!matches(r))return;n++;
+      var d=document.createElement('div');d.className='c';
+      var html='<div class="top"><span class="ftag">'+esc(THEMES[r[0]])+'</span>';
+      if(state.tab==='ideas'&&r[5])html+='<span class="seek">✋ seeking</span>';
+      html+='</div><h3>'+esc(r[1])+'</h3><div class="by">'+esc(r[2])+(r[3]?' · @'+esc(r[3]):'')+'</div>'
+        +'<div class="bl">'+esc(r[4])+'</div>';
+      if(state.tab==='projects'){
+        html+='<div class="links">'+projLinks(r)+'</div>';
+      }
+      var contact=r[3]?'<b>Jump in:</b> DM <b>@'+esc(r[3])+'</b> on Discord'+(state.tab==='ideas'?' or post in #team-finder':''):'Reach out in #team-finder';
+      html+='<div class="contact">'+contact+'</div>';
+      d.innerHTML=html;grid.appendChild(d);
+    });
+    document.getElementById('count').textContent=n+(state.tab==='projects'?' project':' idea')+(n===1?'':'s')+(state.field==='All'?'':' · '+THEMES[state.field]);
+    document.getElementById('empty').style.display=n?'none':'block';
+  }
+  render();
+</script>
+</body>
+</html>

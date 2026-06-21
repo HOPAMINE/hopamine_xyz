@@ -5,21 +5,23 @@ import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
+import { isPortalRoute, isProjectsRoute, isGreenNavRoute } from "@/lib/navRoutes";
+import { PORTAL_GRADIENT_BG } from "@/lib/layoutConstants";
 import { api } from "../../convex/_generated/api";
 import { Providers } from "./providers";
 
 const convexConfigured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /** Routes that are exempt from the onboarding gate. */
-const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/profile-compare"];
+const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/profile-compare", "/hopathon", "/claim"];
 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
   const { user, isLoaded: isUserLoaded } = useUser();
   const getOrCreateUser = useMutation(api.users.getOrCreate);
   const existing = useQuery(
-    api.users.getByClerkId,
-    user?.id ? { clerkId: user.id } : "skip",
+    api.users.getCurrentUser,
+    isUserLoaded && user ? {} : "skip",
   );
   const pathname = usePathname();
   const router = useRouter();
@@ -34,6 +36,8 @@ function UserSyncInner() {
       clerkId: user.id,
       avatarUrl: user.imageUrl ?? "",
       username: user.username || undefined,
+    }).catch((err: unknown) => {
+      console.error("[UserSync] getOrCreate failed:", err);
     });
   }, [user, isUserLoaded, getOrCreateUser, existing]);
 
@@ -65,10 +69,30 @@ function UserGate() {
   return <UserSyncInner />;
 }
 
-function NavbarGate() {
+function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (ONBOARDING_EXEMPT.some((p) => pathname.startsWith(p))) return null;
-  return <Navbar />;
+  const isPortal = isPortalRoute(pathname);
+  const usePortalGradient = isPortal && !isProjectsRoute(pathname) && !isGreenNavRoute(pathname);
+
+  if (usePortalGradient) {
+    return (
+      <div className="relative min-h-dvh w-full">
+        <div
+          className={`pointer-events-none absolute inset-0 ${PORTAL_GRADIENT_BG}`}
+          aria-hidden
+        />
+        <Navbar />
+        <div className="relative">{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+      {children}
+    </>
+  );
 }
 
 export default function ClientLayout({
@@ -76,11 +100,32 @@ export default function ClientLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isHopathon = pathname === "/hopathon" || pathname.startsWith("/hopathon/");
+  const isClaim = pathname === "/claim" || pathname.startsWith("/claim/");
+  const isLanding = pathname === "/";
+
+  if (isHopathon) {
+    return <>{children}</>;
+  }
+
+  if (isClaim) {
+    return (
+      <Providers>
+        <UserGate />
+        {children}
+      </Providers>
+    );
+  }
+
   return (
     <Providers>
       <UserGate />
-      <NavbarGate />
-      {children}
+      <div
+        className={`h-dvh overflow-x-hidden ${isLanding ? "overflow-y-hidden" : "overflow-y-auto"}`}
+      >
+        <AppShell>{children}</AppShell>
+      </div>
     </Providers>
   );
 }
