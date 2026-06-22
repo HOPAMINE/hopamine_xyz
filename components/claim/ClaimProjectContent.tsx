@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "../../convex/_generated/api";
@@ -22,6 +22,15 @@ export function ClaimProjectContent() {
   const myClaim = useQuery(api.hackathonClaims.getMyProject);
   const directoryProjects = useQuery(api.projects.listHackathonDirectory);
   const claimProject = useMutation(api.hackathonClaims.claimProject);
+  const showClaimedProjectOnDashboard = useMutation(
+    api.users.showClaimedHackathonProjectOnDashboard,
+  );
+
+  useEffect(() => {
+    if (myClaim) {
+      void showClaimedProjectOnDashboard({});
+    }
+  }, [myClaim, showClaimedProjectOnDashboard]);
 
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);

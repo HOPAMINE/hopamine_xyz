@@ -126,6 +126,13 @@ export const claimProject = mutation({
       projectIndex: args.projectIndex,
     });
 
+    if (user.hiddenClaimedHackathonProjectOnDashboard) {
+      await ctx.db.patch(user._id, {
+        hiddenClaimedHackathonProjectOnDashboard: undefined,
+        updatedAt: Date.now(),
+      });
+    }
+
     return claimId;
   },
 });

@@ -1010,6 +1010,15 @@ export const joinWithCode = mutation({
 
     const existingMember = await getProjectMembership(ctx, project._id, user._id);
     if (existingMember) {
+      if (existingMember.hiddenOnDashboardAt !== undefined) {
+        await ctx.db.patch(existingMember._id, {
+          hiddenOnDashboardAt: undefined,
+        });
+        return {
+          projectId: project._id,
+          projectTitle: project.title,
+        };
+      }
       throw new Error("You are already on this project");
     }
 

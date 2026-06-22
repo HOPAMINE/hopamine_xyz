@@ -306,7 +306,7 @@ export function ProjectActions({
 
   async function handleHideFromDashboard() {
     if (acting) return;
-    if (!window.confirm("Hide this project from your dashboard? You can rejoin it later from the community.")) {
+    if (!window.confirm("Hide this project from your dashboard? You can show it again by re-entering the project code.")) {
       return;
     }
 
@@ -567,7 +567,7 @@ export function ClaimedHackathonProjectActions({
     if (acting) return;
     if (
       !window.confirm(
-        "Hide this project from your dashboard? You can claim it again from /claim.",
+        "Hide this project from your dashboard? Visit /claim/project to show it again.",
       )
     ) {
       return;
