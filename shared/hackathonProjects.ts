@@ -342,7 +342,15 @@ export const HACKATHON_PROJECTS: HackathonProject[] = [
     "title": "Saga",
     "builder": "Test",
     "blurb": "A place for new creative communities to be created."
+  },
+  {
+    "field": "Coordination",
+    "title": "Hopamine Hackathon Staff",
+    "builder": "Mawuli",
+    "blurb": "The Hopamine team behind The Green Hackathon — coordination, production, and builder support."
   }
-];;
+];
+
+export const HOPAMINE_HACKATHON_STAFF_TITLE = "Hopamine Hackathon Staff";
 
 export const HACKATHON_PROJECT_COUNT = HACKATHON_PROJECTS.length;

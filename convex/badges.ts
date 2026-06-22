@@ -1,12 +1,13 @@
 import { v } from "convex/values";
-import { query, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { projectFieldValidator, type ProjectField } from "./lib/projectFields";
+import {
+  backfillGreenHackathonBadge,
+  buildGreenHackathonBadgeFromParticipation,
+  syncGreenHackathonBadgeForUser,
+} from "./lib/badgeRecords";
 
-// Each badge is a discriminated union member keyed by `kind`. Add a new member
-// per badge type; the frontend selects a card component off `kind`. `id` is a
-// stable React key (today it equals `kind`, but stays distinct in case a future
-// badge type can be earned more than once).
 const greenHackathonBadgeValidator = v.object({
   kind: v.literal("green-hackathon-builder"),
   id: v.string(),
@@ -17,6 +18,7 @@ const greenHackathonBadgeValidator = v.object({
   projectBlurb: v.optional(v.string()),
   projectField: v.optional(projectFieldValidator),
   projectIndex: v.optional(v.number()),
+  hackathonId: v.optional(v.string()),
 });
 
 const badgeValidator = v.union(greenHackathonBadgeValidator);
@@ -31,46 +33,81 @@ type Badge = {
   projectBlurb?: string;
   projectField?: ProjectField;
   projectIndex?: number;
+  hackathonId?: string;
 };
 
-/**
- * Computes the badges a user has earned from their activity.
- *
- * Badges are derived, not stored — each source below inspects existing data and
- * contributes a badge when its criteria are met. Add new badge sources here as
- * the product grows; both the auth-scoped and any future public (by-username)
- * query should funnel through this single helper.
- */
-async function computeBadgesForUser(ctx: QueryCtx, user: Doc<"users">): Promise<Badge[]> {
-  const badges: Badge[] = [];
+async function badgeDocToApi(
+  ctx: QueryCtx,
+  badge: Doc<"badges">,
+  user: Doc<"users">,
+): Promise<Badge | null> {
+  if (badge.kind !== "green-hackathon-builder") {
+    return null;
+  }
 
-  // Green Hackathon builder badge — earned by claiming hackathon participation.
-  // Project details (if the user also claimed a project) enrich the card.
-  const participation = await ctx.db
-    .query("hackathonParticipations")
+  const participation = badge.hackathonParticipationId
+    ? await ctx.db.get("hackathonParticipations", badge.hackathonParticipationId)
+    : null;
+  const claim = badge.hackathonClaimId
+    ? await ctx.db.get("hackathonClaims", badge.hackathonClaimId)
+    : null;
+  const project = badge.projectId ? await ctx.db.get("projects", badge.projectId) : null;
+
+  return {
+    kind: "green-hackathon-builder",
+    id: badge._id,
+    name: user.name,
+    builderNumber: participation?.builderNumber ?? 0,
+    username: user.username,
+    projectTitle: claim?.projectTitle ?? project?.title,
+    projectBlurb: claim?.blurb ?? project?.blurb,
+    projectField: claim?.field ?? project?.field,
+    projectIndex: claim?.projectIndex ?? project?.hackathonIndex,
+    hackathonId: badge.hackathonId,
+  };
+}
+
+async function listBadgesForUser(ctx: QueryCtx, user: Doc<"users">): Promise<Badge[]> {
+  const badgeDocs = await ctx.db
+    .query("badges")
     .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .unique();
+    .collect();
 
-  if (participation) {
-    const projectClaim = await ctx.db
-      .query("hackathonClaims")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .unique();
+  const badges: Badge[] = [];
+  for (const badgeDoc of badgeDocs) {
+    const badge = await badgeDocToApi(ctx, badgeDoc, user);
+    if (badge) {
+      badges.push(badge);
+    }
+  }
 
-    badges.push({
-      kind: "green-hackathon-builder",
-      id: "green-hackathon-builder",
-      name: user.name,
-      builderNumber: participation.builderNumber,
-      username: user.username,
-      projectTitle: projectClaim?.projectTitle,
-      projectBlurb: projectClaim?.blurb,
-      projectField: projectClaim?.field,
-      projectIndex: projectClaim?.projectIndex,
-    });
+  const hasGreenHackathonBadge = badges.some((badge) => badge.kind === "green-hackathon-builder");
+  if (!hasGreenHackathonBadge) {
+    const fallback = await buildGreenHackathonBadgeFromParticipation(ctx, user);
+    if (fallback) {
+      badges.push(fallback);
+    }
   }
 
   return badges;
+}
+
+async function getAuthenticatedUser(ctx: MutationCtx | QueryCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Not authenticated");
+  }
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+    .unique();
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return user;
 }
 
 export const listMine = query({
@@ -91,7 +128,7 @@ export const listMine = query({
       return [];
     }
 
-    return await computeBadgesForUser(ctx, user);
+    return await listBadgesForUser(ctx, user);
   },
 });
 
@@ -104,6 +141,46 @@ export const listForUser = query({
       return [];
     }
 
-    return await computeBadgesForUser(ctx, user);
+    return await listBadgesForUser(ctx, user);
+  },
+});
+
+/** Syncs the signed-in user's hackathon badge row from their participation claim. */
+export const ensureMine = mutation({
+  args: {},
+  returns: v.union(
+    v.literal("created"),
+    v.literal("updated"),
+    v.literal("skipped"),
+    v.literal("none"),
+  ),
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+    return await syncGreenHackathonBadgeForUser(ctx, user._id);
+  },
+});
+
+/** One-time backfill for participations claimed before the badges table existed. */
+export const backfillFromHackathonParticipations = internalMutation({
+  args: {},
+  returns: v.object({
+    created: v.number(),
+    updated: v.number(),
+    skipped: v.number(),
+  }),
+  handler: async (ctx) => {
+    const participations = await ctx.db.query("hackathonParticipations").collect();
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (const participation of participations) {
+      const result = await backfillGreenHackathonBadge(ctx, participation);
+      if (result === "created") created++;
+      else if (result === "updated") updated++;
+      else skipped++;
+    }
+
+    return { created, updated, skipped };
   },
 });

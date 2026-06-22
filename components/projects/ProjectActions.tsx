@@ -16,6 +16,8 @@ type ProjectActionsProps = {
   trigger?: "default" | "minimal";
   /** White panel dropdown like navbar notifications. */
   menuVariant?: "themed" | "panel";
+  /** Show "Hide project" to remove from dashboard without leaving. */
+  allowHideFromDashboard?: boolean;
   onEdit?: () => void;
 };
 
@@ -145,11 +147,13 @@ export function ProjectActions({
   variant = "dashboard",
   trigger = "default",
   menuVariant = "themed",
+  allowHideFromDashboard = false,
   onEdit,
 }: ProjectActionsProps) {
   const leaveProject = useMutation(api.projects.leave);
   const removeProject = useMutation(api.projects.remove);
   const requestJoin = useMutation(api.projects.requestJoin);
+  const hideFromDashboard = useMutation(api.projects.hideFromDashboard);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -163,6 +167,7 @@ export function ProjectActions({
   const isDashboard = variant === "dashboard";
   const isOwner = viewerRole === "owner";
   const isMember = viewerRole === "member";
+  const isOnProject = isOwner || isMember;
   const showRequest = viewerRole === null;
 
   const isMinimalTrigger = trigger === "minimal";
@@ -299,7 +304,25 @@ export function ProjectActions({
     }
   }
 
-  if (!isOwner && !isMember && !showRequest) {
+  async function handleHideFromDashboard() {
+    if (acting) return;
+    if (!window.confirm("Hide this project from your dashboard? You can rejoin it later from the community.")) {
+      return;
+    }
+
+    setActing(true);
+    setError("");
+    try {
+      await hideFromDashboard({ projectId });
+      setMenuOpen(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to hide project.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  if (!isOnProject && !showRequest) {
     return null;
   }
 
@@ -373,7 +396,18 @@ export function ProjectActions({
                 </button>
               </>
             ) : null}
-            {isMember ? (
+            {isOnProject && allowHideFromDashboard ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={acting}
+                onClick={() => void handleHideFromDashboard()}
+                className={menuItemClass}
+              >
+                Hide project
+              </button>
+            ) : null}
+            {isOnProject ? (
               <button
                 type="button"
                 role="menuitem"
@@ -425,6 +459,7 @@ type ClaimedHackathonProjectActionsProps = {
   onEdit: () => void;
   trigger?: "default" | "minimal";
   menuVariant?: "themed" | "panel";
+  allowHideFromDashboard?: boolean;
 };
 
 /** Three-dot menu for hackathon badge projects (not stored in `projects` table). */
@@ -432,8 +467,16 @@ export function ClaimedHackathonProjectActions({
   onEdit,
   trigger = "minimal",
   menuVariant = "panel",
+  allowHideFromDashboard = false,
 }: ClaimedHackathonProjectActionsProps) {
+  const unclaimProject = useMutation(api.hackathonClaims.unclaimProject);
+  const hideClaimedHackathonProject = useMutation(
+    api.users.hideClaimedHackathonProjectFromDashboard,
+  );
+
   const [menuOpen, setMenuOpen] = useState(false);
+  const [acting, setActing] = useState(false);
+  const [error, setError] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuCoords, setMenuCoords] = useState<{ top: number; right: number } | null>(null);
@@ -449,6 +492,7 @@ export function ClaimedHackathonProjectActions({
     "z-60 w-[min(14rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-white/20 bg-white text-neutral-900 shadow-xl";
 
   const menuItemClass = `${robotoMono.className} flex w-full items-center px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-neutral-700 transition-colors hover:bg-neutral-50`;
+  const dangerMenuItemClass = `${robotoMono.className} flex w-full items-center px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40`;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -496,6 +540,50 @@ export function ClaimedHackathonProjectActions({
       window.removeEventListener("scroll", updateMenuCoords, true);
     };
   }, [menuOpen, isPanelMenu]);
+
+  async function handleLeave() {
+    if (acting) return;
+    if (
+      !window.confirm(
+        "Remove this project from your profile? You can claim it again later.",
+      )
+    ) {
+      return;
+    }
+
+    setActing(true);
+    setError("");
+    try {
+      await unclaimProject({});
+      setMenuOpen(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove project.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleHideFromDashboard() {
+    if (acting) return;
+    if (
+      !window.confirm(
+        "Hide this project from your dashboard? You can claim it again from /claim.",
+      )
+    ) {
+      return;
+    }
+
+    setActing(true);
+    setError("");
+    try {
+      await hideClaimedHackathonProject({});
+      setMenuOpen(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to hide project.");
+    } finally {
+      setActing(false);
+    }
+  }
 
   return (
     <div className={`relative ${isMinimalTrigger ? "" : "flex flex-col gap-1"}`} ref={menuRef}>
@@ -552,8 +640,34 @@ export function ClaimedHackathonProjectActions({
             >
               Edit project
             </button>
+            {allowHideFromDashboard ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={acting}
+                onClick={() => void handleHideFromDashboard()}
+                className={menuItemClass}
+              >
+                Hide project
+              </button>
+            ) : null}
+            <button
+              type="button"
+              role="menuitem"
+              disabled={acting}
+              onClick={() => void handleLeave()}
+              className={dangerMenuItemClass}
+            >
+              Leave project
+            </button>
           </div>
         </div>
+      ) : null}
+
+      {error ? (
+        <p className={`${robotoMono.className} mt-1 text-[10px] text-red-500`} role="alert">
+          {error}
+        </p>
       ) : null}
     </div>
   );

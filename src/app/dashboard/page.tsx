@@ -38,7 +38,7 @@ function ProfilePageContent() {
               No profile found yet. Navigate the app while signed in — it syncs automatically.
             </p>
           ) : (
-            <ProfileTabContent user={convexUser} />
+            <ProfileTabContent user={convexUser} showFirstNameOnCard />
           )}
         </section>
       </div>

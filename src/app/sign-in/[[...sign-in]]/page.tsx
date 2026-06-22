@@ -2,8 +2,8 @@
 
 import { useSignIn } from "@clerk/nextjs/legacy";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 function GoogleMark({ className }: { className?: string }) {
   return (
@@ -42,7 +42,24 @@ const fieldBase =
   "w-full rounded-md border border-neutral-300 bg-neutral-50 px-4 text-neutral-900 shadow-sm placeholder:text-neutral-500 focus:border-transparent focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-navbar";
 
 export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className={`${shell} flex items-center justify-center bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)]`}>
+          <p className="font-mono text-sm text-white">Loading…</p>
+        </div>
+      }
+    >
+      <SignInPageContent />
+    </Suspense>
+  );
+}
+
+function SignInPageContent() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect_url") ?? "/dashboard";
+  const ssoCallback = `/sso-callback?redirect_url=${encodeURIComponent(redirectTo)}`;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -87,7 +104,7 @@ export default function SignInPage() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.push("/dashboard");
+        router.push(redirectTo);
       } else {
         setError("Sign in failed. Please try again.");
       }
@@ -108,8 +125,8 @@ export default function SignInPage() {
     try {
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/dashboard",
+        redirectUrl: ssoCallback,
+        redirectUrlComplete: ssoCallback,
       });
     } catch (err: unknown) {
       const clerkErr = err as { errors?: Array<{ message?: string }> };
@@ -242,7 +259,11 @@ export default function SignInPage() {
             <p className="mt-6 text-center font-mono text-sm text-neutral-600">
               Don&apos;t have an account?{" "}
               <Link
-                href="/sign-up"
+                href={
+                  redirectTo.startsWith("/claim")
+                    ? `/sign-up?redirect_url=${encodeURIComponent(redirectTo)}`
+                    : "/sign-up"
+                }
                 className="font-semibold text-accent-navbar underline decoration-accent-navbar/40 underline-offset-4 transition hover:brightness-[1.05]"
               >
                 Sign up

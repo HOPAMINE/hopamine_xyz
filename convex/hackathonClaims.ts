@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { projectFieldValidator } from "./lib/projectFields";
 import { HACKATHON_PROJECT_COUNT } from "./lib/hackathonProjectCount";
+import {
+  linkGreenHackathonBadgeToProjectClaim,
+  unlinkGreenHackathonBadgeFromProjectClaim,
+} from "./lib/badgeRecords";
 
 const hackathonClaimValidator = v.object({
   _id: v.id("hackathonClaims"),
@@ -106,7 +110,7 @@ export const claimProject = mutation({
       throw new Error("You have already claimed this project");
     }
 
-    return await ctx.db.insert("hackathonClaims", {
+    const claimId = await ctx.db.insert("hackathonClaims", {
       userId: user._id,
       projectIndex: args.projectIndex,
       projectTitle: title,
@@ -115,5 +119,34 @@ export const claimProject = mutation({
       blurb,
       claimedAt: Date.now(),
     });
+
+    await linkGreenHackathonBadgeToProjectClaim(ctx, {
+      userId: user._id,
+      claimId,
+      projectIndex: args.projectIndex,
+    });
+
+    return claimId;
+  },
+});
+
+export const unclaimProject = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const claim = await ctx.db
+      .query("hackathonClaims")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!claim) {
+      throw new Error("No hackathon project to remove");
+    }
+
+    await ctx.db.delete(claim._id);
+    await unlinkGreenHackathonBadgeFromProjectClaim(ctx, user._id);
+    return null;
   },
 });

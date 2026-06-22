@@ -22,7 +22,7 @@ export function ProjectSectionHeaderActions({
 
   const secondaryClass =
     variant === "dashboard"
-      ? `${pillBase} border-accent-navbar/20 bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar focus-visible:outline-accent-navbar`
+      ? `${pillBase} border-accent-navbar/20 bg-white text-accent-navbar hover:bg-accent-navbar hover:text-white focus-visible:outline-accent-navbar`
       : `${pillBase} border-white/35 bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar focus-visible:outline-white`;
 
   return (

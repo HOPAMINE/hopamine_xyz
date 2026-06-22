@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 
 function trimText(value: unknown): string {
@@ -272,7 +273,7 @@ export const completeOnboarding = mutation({
   args: {
     name: v.string(),
     location: v.string(),
-    archetypes: v.array(v.string()),
+    bio: v.string(),
     skills: v.array(v.string()),
     vision: v.string(),
     why: v.string(),
@@ -302,7 +303,7 @@ export const completeOnboarding = mutation({
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
       location: args.location.trim(),
-      archetypes: args.archetypes,
+      bio: args.bio.trim(),
       skills: normalizeSkills(args.skills),
       vision: args.vision.trim(),
       why: args.why.trim(),
@@ -498,6 +499,39 @@ const publicProfileValidator = v.object({
   socialLinks: v.optional(v.record(v.string(), v.string())),
 });
 
+function toPublicProfile(user: {
+  _id: Id<"users">;
+  name: string;
+  username?: string;
+  avatarUrl: string;
+  bio?: string;
+  location?: string;
+  skills?: string[];
+  interests?: string[];
+  vision?: string;
+  learning?: string;
+  socialLinks?: Record<string, string>;
+  onboardingCompletedAt?: number;
+}) {
+  if (!user.onboardingCompletedAt) {
+    return null;
+  }
+
+  return {
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio,
+    location: user.location,
+    skills: user.skills,
+    interests: user.interests,
+    vision: user.vision,
+    learning: user.learning,
+    socialLinks: user.socialLinks,
+  };
+}
+
 export const getPublicProfileByUsername = query({
   args: { username: v.string() },
   returns: v.union(publicProfileValidator, v.null()),
@@ -512,23 +546,24 @@ export const getPublicProfileByUsername = query({
       .withIndex("by_username", (q) => q.eq("username", username))
       .unique();
 
-    if (!user?.username || !user.onboardingCompletedAt) {
+    if (!user?.username) {
       return null;
     }
 
-    return {
-      _id: user._id,
-      name: user.name,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      bio: user.bio,
-      location: user.location,
-      skills: user.skills,
-      interests: user.interests,
-      vision: user.vision,
-      learning: user.learning,
-      socialLinks: user.socialLinks,
-    };
+    return toPublicProfile(user);
+  },
+});
+
+export const getPublicProfileByUserId = query({
+  args: { userId: v.id("users") },
+  returns: v.union(publicProfileValidator, v.null()),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) {
+      return null;
+    }
+
+    return toPublicProfile(user);
   },
 });
 
@@ -575,5 +610,32 @@ export const getPublicBadgeByUsername = query({
       projectTitle: projectClaim?.projectTitle,
       projectBlurb: projectClaim?.blurb,
     };
+  },
+});
+
+export const hideClaimedHackathonProjectFromDashboard = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      hiddenClaimedHackathonProjectOnDashboard: true,
+      updatedAt: Date.now(),
+    });
+
+    return null;
   },
 });

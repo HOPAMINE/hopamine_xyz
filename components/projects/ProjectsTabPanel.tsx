@@ -140,6 +140,8 @@ export function ProjectsTabPanel({ builderName }: ProjectsTabPanelProps) {
                 viewerRole={project.viewerRole}
                 hasPendingJoinRequest={project.hasPendingJoinRequest}
                 variant="dashboard"
+                trigger="minimal"
+                menuVariant="panel"
                 onEdit={() => setEditingProjectId(project._id)}
               />
             </div>

@@ -8,16 +8,22 @@
  * @module
  */
 
+import type * as adminTableCounts from "../adminTableCounts.js";
 import type * as badges from "../badges.js";
 import type * as hackathonClaims from "../hackathonClaims.js";
 import type * as hackathonParticipations from "../hackathonParticipations.js";
+import type * as lib_badgeKinds from "../lib/badgeKinds.js";
+import type * as lib_badgeRecords from "../lib/badgeRecords.js";
 import type * as lib_hackathonProjectCount from "../lib/hackathonProjectCount.js";
 import type * as lib_projectFields from "../lib/projectFields.js";
 import type * as lib_projectJoinCode from "../lib/projectJoinCode.js";
 import type * as lib_projectUrls from "../lib/projectUrls.js";
 import type * as lib_seedHackathonDirectory from "../lib/seedHackathonDirectory.js";
+import type * as lib_seedHackathonStaffProject from "../lib/seedHackathonStaffProject.js";
+import type * as lib_tableCounts from "../lib/tableCounts.js";
 import type * as projects from "../projects.js";
 import type * as seedHackathonProjects from "../seedHackathonProjects.js";
+import type * as seedHackathonStaffProject from "../seedHackathonStaffProject.js";
 import type * as users from "../users.js";
 
 import type {
@@ -27,16 +33,22 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminTableCounts: typeof adminTableCounts;
   badges: typeof badges;
   hackathonClaims: typeof hackathonClaims;
   hackathonParticipations: typeof hackathonParticipations;
+  "lib/badgeKinds": typeof lib_badgeKinds;
+  "lib/badgeRecords": typeof lib_badgeRecords;
   "lib/hackathonProjectCount": typeof lib_hackathonProjectCount;
   "lib/projectFields": typeof lib_projectFields;
   "lib/projectJoinCode": typeof lib_projectJoinCode;
   "lib/projectUrls": typeof lib_projectUrls;
   "lib/seedHackathonDirectory": typeof lib_seedHackathonDirectory;
+  "lib/seedHackathonStaffProject": typeof lib_seedHackathonStaffProject;
+  "lib/tableCounts": typeof lib_tableCounts;
   projects: typeof projects;
   seedHackathonProjects: typeof seedHackathonProjects;
+  seedHackathonStaffProject: typeof seedHackathonStaffProject;
   users: typeof users;
 }>;
 

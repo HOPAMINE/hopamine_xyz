@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { Id } from "../../../convex/_generated/dataModel";
+import { getPublicProfilePath } from "@/lib/profileUrls";
 import { robotoMono, sortsMillGoudy } from "../../../fonts";
 import { TriDatum, VW, VH, TRI_STYLE } from "./hexMosaic";
 
 type Props = {
+  userId: Id<"users">;
   name: string;
   username?: string;
   avatarUrl?: string;
@@ -15,7 +17,6 @@ type Props = {
   interests: string[];
   rot: number;
   triangles: TriDatum[];
-  discordUsername?: string;
   lastSeenAt?: number;
 };
 
@@ -47,6 +48,7 @@ function TagPills({ label, items }: { label: string; items: string[] }) {
 }
 
 export function BuilderCard({
+  userId,
   name,
   username,
   avatarUrl,
@@ -55,15 +57,10 @@ export function BuilderCard({
   interests,
   rot,
   triangles,
-  discordUsername,
   lastSeenAt,
 }: Props) {
-  const [copied, setCopied] = useState(false);
-
   const isActive = !!lastSeenAt && Date.now() - lastSeenAt < 2 * 60 * 1000;
-  const profileHref = username
-    ? `/profile/${encodeURIComponent(username.trim().toLowerCase())}`
-    : undefined;
+  const profileHref = getPublicProfilePath({ _id: userId, username });
 
   const initials = name
     .split(" ")
@@ -139,40 +136,13 @@ export function BuilderCard({
         <TagPills label="Skills" items={skills} />
         <TagPills label="Interests" items={interests} />
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          {discordUsername ? (
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard.writeText(discordUsername);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-              className={`${robotoMono.className} rounded-full bg-[#00a6f3] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#0090d4]`}
-            >
-              {copied ? "Copied!" : "Connect"}
-            </button>
-          ) : (
-            <span
-              className={`${robotoMono.className} rounded-full bg-[#00a6f3]/40 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white`}
-            >
-              Connect
-            </span>
-          )}
-          {profileHref ? (
-            <Link
-              href={profileHref}
-              className={`${robotoMono.className} text-[11px] font-semibold uppercase tracking-widest text-[#00a6f3] transition-colors hover:text-[#0090d4] hover:underline`}
-            >
-              View Profile
-            </Link>
-          ) : (
-            <span
-              className={`${robotoMono.className} text-[11px] font-semibold uppercase tracking-widest text-neutral-400`}
-            >
-              View Profile
-            </span>
-          )}
+        <div className="mt-auto flex justify-end pt-2">
+          <Link
+            href={profileHref}
+            className={`${robotoMono.className} text-[11px] font-semibold uppercase tracking-widest text-[#00a6f3] transition-colors hover:text-[#0090d4] hover:underline`}
+          >
+            View Profile
+          </Link>
         </div>
       </div>
     </article>

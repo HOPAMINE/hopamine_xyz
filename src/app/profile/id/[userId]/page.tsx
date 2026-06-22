@@ -4,27 +4,25 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect } from "react";
-import { api } from "../../../../convex/_generated/api";
-import { normalizeUsername } from "@/lib/profileUrls";
-import { PublicProfileShell } from "../PublicProfileShell";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
+import { PublicProfileShell } from "../../PublicProfileShell";
 
-function PublicProfilePageContent() {
+function PublicProfileByIdPageContent() {
   const params = useParams();
   const router = useRouter();
   const { isLoaded: clerkLoaded } = useUser();
   const currentUser = useQuery(api.users.getCurrentUser, clerkLoaded ? {} : "skip");
 
-  const usernameParam = typeof params.id === "string" ? params.id : "";
-  const normalizedUsername = normalizeUsername(usernameParam);
+  const userIdParam = typeof params.userId === "string" ? params.userId : "";
+  const userId = userIdParam as Id<"users">;
 
   const profile = useQuery(
-    api.users.getPublicProfileByUsername,
-    normalizedUsername ? { username: normalizedUsername } : "skip",
+    api.users.getPublicProfileByUserId,
+    userIdParam ? { userId } : "skip",
   );
 
-  const isOwnProfile =
-    !!currentUser?.username &&
-    normalizeUsername(currentUser.username) === normalizedUsername;
+  const isOwnProfile = !!currentUser && currentUser._id === userIdParam;
 
   useEffect(() => {
     if (!clerkLoaded || currentUser === undefined || !isOwnProfile) return;
@@ -33,18 +31,18 @@ function PublicProfilePageContent() {
 
   return (
     <PublicProfileShell
-      profile={normalizedUsername ? profile : null}
+      profile={userIdParam ? profile : null}
       isRedirecting={isOwnProfile && currentUser !== undefined}
       invalidMessage="Profile not found."
-      notFoundMessage={`No profile found for @${normalizedUsername}.`}
+      notFoundMessage="No profile found for this builder."
     />
   );
 }
 
-export default function ProfileByUsernamePage() {
+export default function ProfileByUserIdPage() {
   return (
     <Suspense>
-      <PublicProfilePageContent />
+      <PublicProfileByIdPageContent />
     </Suspense>
   );
 }

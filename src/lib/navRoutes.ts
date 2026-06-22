@@ -21,5 +21,5 @@ export function isProjectsRoute(pathname: string): boolean {
 }
 
 export function isGreenNavRoute(pathname: string): boolean {
-  return isProjectsRoute(pathname) || isEventsRoute(pathname) || pathname.startsWith("/profile/");
+  return isProjectsRoute(pathname) || isEventsRoute(pathname);
 }

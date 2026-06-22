@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { createGreenHackathonBuilderBadge } from "./lib/badgeRecords";
 
 const participationValidator = v.object({
   _id: v.id("hackathonParticipations"),
@@ -69,11 +70,20 @@ export const claim = mutation({
 
     const participationCount = (await ctx.db.query("hackathonParticipations").collect()).length;
     const builderNumber = participationCount + 1;
+    const claimedAt = Date.now();
 
-    return await ctx.db.insert("hackathonParticipations", {
+    const participationId = await ctx.db.insert("hackathonParticipations", {
       userId: user._id,
       builderNumber,
-      claimedAt: Date.now(),
+      claimedAt,
     });
+
+    await createGreenHackathonBuilderBadge(ctx, {
+      userId: user._id,
+      participationId,
+      earnedAt: claimedAt,
+    });
+
+    return participationId;
   },
 });

@@ -5,14 +5,11 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "../../convex/_generated/api";
-import {
-  HACKATHON_PROJECTS,
-  getHackathonProjectByIndex,
-  type HackathonProject,
-} from "@/lib/hackathonDirectory";
+import type { HackathonProject } from "@/lib/hackathonDirectory";
 import { roboto, robotoMono } from "../../fonts";
 import { ClaimNavbar } from "./ClaimNavbar";
 import { ClaimProjectCard } from "./ClaimProjectCard";
+import { projectMatchesQuery, toHackathonProject } from "./directoryProject";
 
 const inputClassName = `${robotoMono.className} w-full rounded-lg border border-white/25 bg-[#13450E] px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/50`;
 
@@ -20,14 +17,10 @@ const primaryButtonClass = `${robotoMono.className} inline-flex items-center rou
 
 const secondaryLinkClass = `${robotoMono.className} inline-flex items-center text-xs font-semibold uppercase tracking-wide text-white/75 underline underline-offset-4 transition-colors hover:text-white`;
 
-function projectMatchesQuery(project: HackathonProject, query: string) {
-  const haystack = `${project.title} ${project.builder} ${project.blurb}`.toLowerCase();
-  return haystack.includes(query);
-}
-
 export function ClaimProjectContent() {
   const { user, isLoaded: clerkLoaded } = useUser();
   const myClaim = useQuery(api.hackathonClaims.getMyProject);
+  const directoryProjects = useQuery(api.projects.listHackathonDirectory);
   const claimProject = useMutation(api.hackathonClaims.claimProject);
 
   const [search, setSearch] = useState("");
@@ -36,27 +29,36 @@ export function ClaimProjectContent() {
   const [error, setError] = useState("");
 
   const filteredProjects = useMemo(() => {
+    if (!directoryProjects) return [];
     const query = search.trim().toLowerCase();
-    return HACKATHON_PROJECTS.map((project, index) => ({ project, index })).filter(
-      ({ project }) => {
-        if (!query) return true;
-        return projectMatchesQuery(project, query);
-      },
-    );
-  }, [search]);
+    return directoryProjects.filter((project) => {
+      if (!query) return true;
+      return projectMatchesQuery(project, query);
+    });
+  }, [directoryProjects, search]);
 
-  const selectedProject =
-    selectedIndex === null ? null : getHackathonProjectByIndex(selectedIndex);
-
-  const claimedProject =
-    myClaim === undefined || myClaim === null
+  const selectedDirectoryProject =
+    selectedIndex === null
       ? null
-      : getHackathonProjectByIndex(myClaim.projectIndex) ?? {
-          field: myClaim.field,
-          title: myClaim.projectTitle,
-          builder: myClaim.builderName,
-          blurb: myClaim.blurb,
-        };
+      : (directoryProjects?.find((project) => project.hackathonIndex === selectedIndex) ?? null);
+
+  const selectedProject: HackathonProject | null = selectedDirectoryProject
+    ? toHackathonProject(selectedDirectoryProject)
+    : null;
+
+  const claimedProject: HackathonProject | null = useMemo(() => {
+    if (!myClaim) return null;
+    const fromDb = directoryProjects?.find(
+      (project) => project.hackathonIndex === myClaim.projectIndex,
+    );
+    if (fromDb) return toHackathonProject(fromDb);
+    return {
+      field: myClaim.field,
+      title: myClaim.projectTitle,
+      builder: myClaim.builderName,
+      blurb: myClaim.blurb,
+    };
+  }, [directoryProjects, myClaim]);
 
   async function handleClaim() {
     if (selectedIndex === null || !selectedProject || saving) return;
@@ -79,7 +81,7 @@ export function ClaimProjectContent() {
     }
   }
 
-  if (!clerkLoaded || myClaim === undefined) {
+  if (!clerkLoaded || myClaim === undefined || directoryProjects === undefined) {
     return (
       <div className="flex min-h-dvh flex-col bg-[#13450E] text-white">
         <ClaimNavbar />
@@ -172,11 +174,11 @@ export function ClaimProjectContent() {
 
             <ul className="mt-4 max-h-[20rem] space-y-2 overflow-y-auto pr-1 sm:max-h-[24rem]">
               {filteredProjects.length > 0 ? (
-                filteredProjects.map(({ project, index }) => (
-                  <li key={`${project.title}-${project.builder}`}>
+                filteredProjects.map((project) => (
+                  <li key={`${project.hackathonIndex}-${project.title}`}>
                     <button
                       type="button"
-                      onClick={() => setSelectedIndex(index)}
+                      onClick={() => setSelectedIndex(project.hackathonIndex)}
                       className={`${robotoMono.className} w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-left text-sm text-white transition-colors hover:border-white/40`}
                     >
                       <span className="block font-semibold uppercase tracking-wide">

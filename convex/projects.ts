@@ -304,14 +304,15 @@ export const listMine = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    const projectIds = [...new Set(memberships.map((row) => row.projectId))];
+    const visibleMemberships = memberships.filter((row) => row.hiddenOnDashboardAt === undefined);
+    const projectIds = [...new Set(visibleMemberships.map((row) => row.projectId))];
     const projects = (
       await Promise.all(projectIds.map((projectId) => ctx.db.get("projects", projectId)))
     ).filter((project): project is NonNullable<typeof project> => project !== null);
 
     const enriched = await Promise.all(
       projects.map(async (project) => {
-        const membership = memberships.find((row) => row.projectId === project._id);
+        const membership = visibleMemberships.find((row) => row.projectId === project._id);
         const base = await enrichProjectForViewer(ctx, project, user._id);
         return {
           ...base,
@@ -838,6 +839,29 @@ export const update = mutation({
         });
       }
     }
+
+    return null;
+  },
+});
+
+export const hideFromDashboard = mutation({
+  args: { projectId: v.id("projects") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const membership = await getProjectMembership(ctx, args.projectId, user._id);
+
+    if (!membership) {
+      throw new Error("You are not a member of this project");
+    }
+
+    if (membership.hiddenOnDashboardAt !== undefined) {
+      return null;
+    }
+
+    await ctx.db.patch(membership._id, {
+      hiddenOnDashboardAt: Date.now(),
+    });
 
     return null;
   },

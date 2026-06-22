@@ -1,18 +1,22 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useRef, useEffect, useCallback, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { useMutation, useConvexAuth } from "convex/react"
+import { useMutation, useConvexAuth, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
-import { PROJECT_TILES } from "@/lib/projectTiles"
-import { ARCHETYPE_BADGES, joinArchetypeList } from "@/lib/archetypes"
+import { CLAIM_PARTICIPATION_PATH } from "@/lib/claimRoutes"
 import Lottie from "lottie-react"
 import globeAnimation from "../../../public/globe.json"
+import { robotoFlex } from "../../../fonts"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BADGES = ARCHETYPE_BADGES
+const questionClass = `${robotoFlex.className} text-2xl text-neutral-900`
+const questionAnswerClass = `${robotoFlex.className} text-3xl text-neutral-900 leading-snug`
+const questionInputClass = `w-full bg-transparent ${robotoFlex.className} text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none leading-relaxed border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1`
+const questionInputLineClass = `${questionInputClass} pb-2 mb-4`
+const questionInputSmClass = `flex-1 bg-transparent ${robotoFlex.className} text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1`
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -39,7 +43,7 @@ function AutoTextarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={3}
-      className="w-full resize-none overflow-hidden bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none leading-relaxed border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
+      className={`${questionInputClass} pb-2 mb-4`}
     />
   )
 }
@@ -146,7 +150,7 @@ function LocationCombobox({
         aria-autocomplete="list"
         aria-expanded={open}
         aria-activedescendant={highlightedIndex >= 0 ? `city-option-${highlightedIndex}` : undefined}
-        className="w-full bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2"
+        className={questionInputLineClass}
       />
       <AnimatePresence>
         {open && (
@@ -186,9 +190,26 @@ function LocationCombobox({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OnboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)]">
+          <p className="font-mono text-sm text-neutral-500">Loading…</p>
+        </div>
+      }
+    >
+      <OnboardPageContent />
+    </Suspense>
+  )
+}
+
+function OnboardPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromClaim = searchParams.get("from") === "claim"
   const completeOnboarding = useMutation(api.users.completeOnboarding)
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
+  const convexUser = useQuery(api.users.getCurrentUser, isAuthenticated ? {} : "skip")
 
   // Submission state
   const [submitting, setSubmitting] = useState(false)
@@ -201,10 +222,11 @@ export default function OnboardPage() {
   const [location, setLocation] = useState("")
   const [locationDone, setLocationDone] = useState(false)
 
-  const [badges, setBadges] = useState<string[]>([])
-  const [badgesDone, setBadgesDone] = useState(false)
-  const [openBadges, setOpenBadges] = useState(false)
-  const [tempBadges, setTempBadges] = useState<string[]>([])
+  const [bioDraft, setBioDraft] = useState("")
+  const [bio, setBio] = useState("")
+  const [bioDone, setBioDone] = useState(false)
+  const [editingBio, setEditingBio] = useState(false)
+  const [tempBio, setTempBio] = useState("")
 
   const [skillsList, setSkillsList] = useState<string[]>(["", ""])
   const [skillsDone, setSkillsDone] = useState(false)
@@ -234,6 +256,11 @@ export default function OnboardPage() {
   // Confirmation screen
   const [confirmed, setConfirmed] = useState(false)
 
+  useEffect(() => {
+    if (!fromClaim || convexUser === undefined || !convexUser?.onboardingCompletedAt) return
+    router.replace(CLAIM_PARTICIPATION_PATH)
+  }, [convexUser, fromClaim, router])
+
   const endRef = useRef<HTMLDivElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
 
@@ -255,16 +282,17 @@ export default function OnboardPage() {
     scrollDown()
   }
 
-  function submitBadges() {
-    if (badges.length === 0) return
-    setBadgesDone(true)
+  function submitBio() {
+    if (!bioDraft.trim()) return
+    setBio(bioDraft.trim())
+    setBioDone(true)
     scrollDown()
   }
 
-  function saveBadges() {
-    if (tempBadges.length === 0) return
-    setBadges(tempBadges)
-    setOpenBadges(false)
+  function saveBio() {
+    if (!tempBio.trim()) return
+    setBio(tempBio.trim())
+    setEditingBio(false)
   }
 
   function submitSkills() {
@@ -334,13 +362,17 @@ export default function OnboardPage() {
       await completeOnboarding({
         name: name.trim(),
         location: location.trim(),
-        archetypes: badges,
+        bio,
         skills: skillsList.filter((s) => s.trim()),
         vision,
         why,
         learning,
         discord: discord.trim() || undefined,
       })
+      if (fromClaim) {
+        router.replace(CLAIM_PARTICIPATION_PATH)
+        return
+      }
       setConfirmed(true)
       setTimeout(() => topRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 80)
     } catch (err: unknown) {
@@ -354,9 +386,7 @@ export default function OnboardPage() {
   // ── Derived display values ────────────────────────────────────────────────
 
   const displayVision = vision.length > 300 ? vision.slice(0, 300).trimEnd() + "…" : vision
-  const badgeLabels = badges
-    .map((id) => BADGES.find((b) => b.id === id)?.title)
-    .filter((t): t is string => Boolean(t))
+  const displayBio = bio.length > 200 ? bio.slice(0, 200).trimEnd() + "…" : bio
 
   // ── Shared button class helpers ───────────────────────────────────────────
 
@@ -409,53 +439,9 @@ export default function OnboardPage() {
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-navbar mb-3">
                 You&apos;re in.
               </p>
-              <h1 className="font-serif text-4xl tracking-[-0.05em] text-neutral-900 leading-[0.95] mb-3 md:text-5xl">
+              <h1 className="font-serif text-4xl tracking-[-0.05em] text-neutral-900 leading-[0.95] mb-10 md:text-5xl">
                 Welcome to the Hopamine Network.
               </h1>
-              <p className="font-serif text-lg text-neutral-500 mb-10">
-                Here&apos;s what others are already building.
-              </p>
-
-              {/* 2×2 project grid — same visual format as /projects */}
-              <div className="grid grid-cols-2 gap-4 mb-10">
-                {PROJECT_TILES.map(({ caption, title, person }, i) => (
-                  <motion.article
-                    key={title}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + i * 0.08, duration: 0.4 }}
-                    className="flex min-w-0 flex-col"
-                  >
-                    <div className="relative aspect-video min-h-0 w-full rounded-none border-2 border-accent-navbar bg-white">
-                      <div className="absolute bottom-0 left-0 flex max-w-[92%] flex-col items-start gap-1 p-2.5">
-                        <p className="line-clamp-2 font-mono text-[9px] leading-snug tracking-wide text-accent-navbar uppercase">
-                          {caption}
-                        </p>
-                        <h3 className="font-serif text-[1rem] leading-[1.1] tracking-[-0.03em] text-neutral-900 line-clamp-2">
-                          {title}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <p className="font-mono text-xs tracking-wide text-neutral-500">
-                        {person}
-                      </p>
-                    </div>
-                  </motion.article>
-                ))}
-              </div>
-
-              {/* ——— and ——— divider */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.4 }}
-                className="flex items-center gap-4 mb-8"
-              >
-                <div className="flex-1 h-px bg-neutral-200" />
-                <span className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-400">and</span>
-                <div className="flex-1 h-px bg-neutral-200" />
-              </motion.div>
 
               {/* Discord CTA */}
               <motion.div
@@ -513,8 +499,8 @@ export default function OnboardPage() {
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-navbar mb-3">
               The Hopamine Network
             </p>
-            <h1 className="font-serif text-4xl tracking-[-0.05em] text-neutral-900 leading-[0.95] mb-10 md:text-5xl">
-              We&apos;re building a hopeful future for all.
+            <h1 className={`${robotoFlex.className} text-4xl font-semibold tracking-[-0.02em] text-neutral-900 leading-[0.95] mb-10 md:text-5xl`}>
+              Welcome to Hopamine.
             </h1>
 
             <div className="space-y-8">
@@ -528,14 +514,14 @@ export default function OnboardPage() {
                 <AnimatePresence mode="wait">
                   {!nameDone ? (
                     <motion.div key="q1-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                      <p className="font-serif text-2xl text-neutral-900 mb-5">What&apos;s your name?</p>
+                      <p className={`${questionClass} mb-5`}>What&apos;s your name?</p>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your name"
                         onKeyDown={(e) => e.key === "Enter" && submitName()}
-                        className="w-full bg-transparent font-serif text-2xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-4"
+                        className={questionInputLineClass}
                       />
                       <button onClick={submitName} disabled={!name.trim()} className={outlineBtn(!!name.trim())}>
                         Continue
@@ -550,7 +536,7 @@ export default function OnboardPage() {
                       onClick={() => setNameDone(false)}
                       className="cursor-pointer hover:opacity-70 transition-opacity group"
                     >
-                      <p className="font-serif text-3xl text-neutral-900 leading-snug">
+                      <p className={questionAnswerClass}>
                         I&apos;m <span className="text-accent-navbar">{name}</span>.
                         <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                       </p>
@@ -571,7 +557,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!locationDone ? (
                         <motion.div key="q2-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">
+                          <p className={`${questionClass} mb-5`}>
                             Where are you building from?
                           </p>
                           <LocationCombobox
@@ -595,7 +581,7 @@ export default function OnboardPage() {
                           onClick={() => setLocationDone(false)}
                           className="cursor-pointer hover:opacity-70 transition-opacity group"
                         >
-                          <p className="font-serif text-3xl text-neutral-900 leading-snug">
+                          <p className={questionAnswerClass}>
                             I&apos;m building from <span className="text-accent-navbar">{location}</span>.
                             <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                           </p>
@@ -606,7 +592,7 @@ export default function OnboardPage() {
                 )}
               </AnimatePresence>
 
-              {/* Q3 — Archetypes ────────────────────────────────────────── */}
+              {/* Q3 — Bio ─────────────────────────────────────────────── */}
               <AnimatePresence>
                 {locationDone && (
                   <motion.div
@@ -616,106 +602,58 @@ export default function OnboardPage() {
                     transition={{ duration: 0.55, ease: "easeOut" }}
                   >
                     <AnimatePresence mode="wait">
-                      {!badgesDone ? (
+                      {!bioDone ? (
                         <motion.div key="q3-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">
-                            Which archetypes resonate with you?
-                          </p>
-                          <div className="space-y-2 mb-5 max-h-96 overflow-y-auto">
-                            {BADGES.map((badge) => (
-                              <button
-                                key={badge.id}
-                                onClick={() =>
-                                  setBadges((prev) =>
-                                    prev.includes(badge.id)
-                                      ? prev.filter((x) => x !== badge.id)
-                                      : [...prev, badge.id]
-                                  )
-                                }
-                                className={`w-full text-left border px-4 py-3 font-serif text-sm transition-colors cursor-pointer ${
-                                  badges.includes(badge.id)
-                                    ? "border-accent-navbar bg-accent-navbar/10 text-neutral-900"
-                                    : "border-neutral-200 text-neutral-600 hover:border-accent-navbar"
-                                }`}
-                              >
-                                <span className="text-lg mr-2">{badge.emoji}</span>
-                                <span className="font-mono font-semibold text-xs">{badge.title}</span>
-                                <p className="font-serif text-xs text-neutral-500 italic mt-1">
-                                  &ldquo;{badge.quote}&rdquo;
-                                </p>
-                              </button>
-                            ))}
+                          <p className={`${questionClass} mb-5`}>Write a short bio.</p>
+                          <AutoTextarea
+                            value={bioDraft}
+                            onChange={setBioDraft}
+                            placeholder="A short intro about you…"
+                          />
+                          <div className="mt-4 flex items-center gap-4">
+                            <button
+                              onClick={submitBio}
+                              disabled={!bioDraft.trim()}
+                              className={outlineBtn(!!bioDraft.trim())}
+                            >
+                              Continue
+                            </button>
                           </div>
-                          <button
-                            onClick={submitBadges}
-                            disabled={badges.length === 0}
-                            className={outlineBtn(badges.length > 0)}
-                          >
-                            Continue
-                          </button>
+                        </motion.div>
+                      ) : editingBio ? (
+                        <motion.div key="q3-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                          <p className={`${questionClass} mb-5`}>Write a short bio.</p>
+                          <AutoTextarea value={tempBio} onChange={setTempBio} placeholder="A short intro about you…" />
+                          <div className="mt-4 flex items-center gap-4">
+                            <button onClick={saveBio} disabled={!tempBio.trim()} className={outlineBtn(!!tempBio.trim())}>
+                              Save
+                            </button>
+                            <button onClick={() => setEditingBio(false)} className={smallOutlineBtn}>
+                              Cancel
+                            </button>
+                          </div>
                         </motion.div>
                       ) : (
-                        <motion.div key="q3-done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-                          <p
-                            onClick={() => { setTempBadges([...badges]); setOpenBadges(!openBadges) }}
-                            className="font-serif text-3xl text-neutral-900 leading-snug cursor-pointer hover:opacity-70 transition-opacity group mb-3"
-                          >
-                            Archetypes: <span className="text-accent-navbar">{joinArchetypeList(badgeLabels)}</span>
-                            <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
+                        <motion.div
+                          key="q3-done"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          onClick={() => {
+                            setTempBio(bio)
+                            setEditingBio(true)
+                          }}
+                          className="cursor-pointer hover:opacity-70 transition-opacity group"
+                        >
+                          <p className={`${questionAnswerClass} mb-3`}>
+                            Bio:
+                            <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">
+                              edit
+                            </span>
                           </p>
-                          <AnimatePresence>
-                            {openBadges && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.25, ease: [0.25, 0, 0, 1] }}
-                                className="mt-4 space-y-2 mb-4 max-h-72 overflow-y-auto"
-                              >
-                                {BADGES.map((badge) => (
-                                  <button
-                                    key={badge.id}
-                                    onClick={() =>
-                                      setTempBadges((prev) =>
-                                        prev.includes(badge.id)
-                                          ? prev.filter((x) => x !== badge.id)
-                                          : [...prev, badge.id]
-                                      )
-                                    }
-                                    className={`w-full text-left border px-3 py-2 font-serif text-xs transition-colors cursor-pointer ${
-                                      tempBadges.includes(badge.id)
-                                        ? "border-accent-navbar bg-accent-navbar/10"
-                                        : "border-neutral-200 hover:border-accent-navbar"
-                                    }`}
-                                  >
-                                    <span className="text-lg mr-2">{badge.emoji}</span>
-                                    <span className="font-mono font-semibold text-xs">{badge.title}</span>
-                                  </button>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                          <AnimatePresence>
-                            {openBadges && (
-                              <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex gap-3"
-                              >
-                                <button
-                                  onClick={saveBadges}
-                                  disabled={tempBadges.length === 0}
-                                  className={outlineBtn(tempBadges.length > 0).replace("px-6 py-2.5", "px-5 py-2")}
-                                >
-                                  Save
-                                </button>
-                                <button onClick={() => setOpenBadges(false)} className={smallOutlineBtn}>
-                                  Cancel
-                                </button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                          <p className={`${robotoFlex.className} text-3xl text-accent-navbar leading-snug`}>
+                            &ldquo;{displayBio}&rdquo;
+                          </p>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -725,7 +663,7 @@ export default function OnboardPage() {
 
               {/* Q4 — Skills ────────────────────────────────────────────── */}
               <AnimatePresence>
-                {badgesDone && (
+                {bioDone && (
                   <motion.div
                     key="q4"
                     initial={{ opacity: 0, y: 22 }}
@@ -735,7 +673,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!skillsDone ? (
                         <motion.div key="q4-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">What are your core skills?</p>
+                          <p className={`${questionClass} mb-5`}>What are your core skills?</p>
                           <div className="space-y-3 mb-4">
                             {skillsList.map((skill, i) => (
                               <div key={i} className="flex items-center gap-3">
@@ -748,7 +686,7 @@ export default function OnboardPage() {
                                   }}
                                   maxLength={35}
                                   placeholder={i === 0 ? "Permaculture design…" : i === 1 ? "Regenerative agriculture…" : `Skill ${i + 1}…`}
-                                  className="flex-1 bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
+                                  className={questionInputSmClass}
                                 />
                                 {skillsList.length > 1 && (
                                   <button
@@ -780,7 +718,7 @@ export default function OnboardPage() {
                         </motion.div>
                       ) : editingSkills ? (
                         <motion.div key="q4-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">What are your core skills?</p>
+                          <p className={`${questionClass} mb-5`}>What are your core skills?</p>
                           <div className="space-y-3 mb-4">
                             {tempSkillsList.map((skill, i) => (
                               <div key={i} className="flex items-center gap-3">
@@ -793,7 +731,7 @@ export default function OnboardPage() {
                                   }}
                                   maxLength={35}
                                   placeholder={`Skill ${i + 1}…`}
-                                  className="flex-1 bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-1"
+                                  className={questionInputSmClass}
                                 />
                                 {tempSkillsList.length > 1 && (
                                   <button
@@ -835,13 +773,13 @@ export default function OnboardPage() {
                           onClick={() => { setTempSkillsList([...skillsList]); setEditingSkills(true) }}
                           className="cursor-pointer hover:opacity-70 transition-opacity group"
                         >
-                          <p className="font-serif text-3xl text-neutral-900 leading-snug mb-3">
+                          <p className={`${questionAnswerClass} mb-3`}>
                             Core skills:
                             <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                           </p>
                           <ul className="flex flex-col gap-1.5">
                             {skillsList.filter((s) => s.trim()).map((s, i) => (
-                              <li key={i} className="font-serif text-2xl text-accent-navbar">
+                              <li key={i} className={`${robotoFlex.className} text-2xl text-accent-navbar`}>
                                 {s}
                               </li>
                             ))}
@@ -865,7 +803,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!visionDone ? (
                         <motion.div key="q5-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">What&apos;s your vision for the future?</p>
+                          <p className={`${questionClass} mb-5`}>What&apos;s your vision for the future?</p>
                           <AutoTextarea value={visionDraft} onChange={setVisionDraft} placeholder="Describe your vision…" />
                           <div className="mt-4 flex items-center gap-4">
                             <button onClick={submitVision} disabled={!visionDraft.trim()} className={outlineBtn(!!visionDraft.trim())}>
@@ -878,7 +816,7 @@ export default function OnboardPage() {
                         </motion.div>
                       ) : editingVision ? (
                         <motion.div key="q5-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">What&apos;s your vision for the future?</p>
+                          <p className={`${questionClass} mb-5`}>What&apos;s your vision for the future?</p>
                           <AutoTextarea value={tempVision} onChange={setTempVision} placeholder="Describe your vision…" />
                           <div className="mt-4 flex items-center gap-4">
                             <button onClick={saveVision} disabled={!tempVision.trim()} className={outlineBtn(!!tempVision.trim())}>
@@ -899,11 +837,11 @@ export default function OnboardPage() {
                           onClick={() => { setTempVision(vision); setEditingVision(true) }}
                           className="cursor-pointer hover:opacity-70 transition-opacity group"
                         >
-                          <p className="font-serif text-3xl text-neutral-900 leading-snug mb-3">
+                          <p className={`${questionAnswerClass} mb-3`}>
                             Your vision:
                             <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                           </p>
-                          <p className="font-serif text-3xl text-accent-navbar leading-snug">
+                          <p className={`${robotoFlex.className} text-3xl text-accent-navbar leading-snug`}>
                             &ldquo;{displayVision}&rdquo;
                           </p>
                         </motion.div>
@@ -925,7 +863,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!done ? (
                         <motion.div key="q6-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">
+                          <p className={`${questionClass} mb-5`}>
                             Why does this movement matter to you?
                           </p>
                           <AutoTextarea
@@ -948,10 +886,10 @@ export default function OnboardPage() {
                         </motion.div>
                       ) : (
                         <motion.div key="q6-done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-                          <p className="font-serif text-3xl text-neutral-900 leading-snug mb-3">
+                          <p className={`${questionAnswerClass} mb-3`}>
                             Why does this movement matter to you?
                           </p>
-                          <p className="font-serif text-3xl text-accent-navbar leading-snug italic">
+                          <p className={`${robotoFlex.className} text-3xl text-accent-navbar leading-snug italic`}>
                             &ldquo;{why}&rdquo;
                           </p>
                         </motion.div>
@@ -973,7 +911,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!learningDone ? (
                         <motion.div key="q7l-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">
+                          <p className={`${questionClass} mb-5`}>
                             What are you learning about right now?
                           </p>
                           <AutoTextarea
@@ -996,7 +934,7 @@ export default function OnboardPage() {
                         </motion.div>
                       ) : editingLearning ? (
                         <motion.div key="q7l-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-5">
+                          <p className={`${questionClass} mb-5`}>
                             What are you learning about right now?
                           </p>
                           <AutoTextarea value={tempLearning} onChange={setTempLearning} placeholder="Share what's capturing your curiosity…" />
@@ -1019,11 +957,11 @@ export default function OnboardPage() {
                           onClick={() => { setTempLearning(learning); setEditingLearning(true) }}
                           className="cursor-pointer hover:opacity-70 transition-opacity group"
                         >
-                          <p className="font-serif text-3xl text-neutral-900 leading-snug mb-3">
+                          <p className={`${questionAnswerClass} mb-3`}>
                             What you&apos;re learning:
                             <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
                           </p>
-                          <p className="font-serif text-3xl text-accent-navbar leading-snug italic">
+                          <p className={`${robotoFlex.className} text-3xl text-accent-navbar leading-snug italic`}>
                             &ldquo;{learning}&rdquo;
                           </p>
                         </motion.div>
@@ -1045,7 +983,7 @@ export default function OnboardPage() {
                     <AnimatePresence mode="wait">
                       {!discordDone ? (
                         <motion.div key="q7-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className="font-serif text-2xl text-neutral-900 mb-1">
+                          <p className={`${questionClass} mb-1`}>
                             What&apos;s your Discord? <span className="font-mono text-sm text-neutral-400">(optional)</span>
                           </p>
                           <p className="font-mono text-xs text-neutral-400 mb-5">Others can copy your username to add you directly.</p>
@@ -1055,7 +993,7 @@ export default function OnboardPage() {
                             onChange={(e) => { setDiscord(e.target.value); setDiscordError("") }}
                             onKeyDown={(e) => e.key === "Enter" && submitDiscord()}
                             placeholder="yourname"
-                            className="w-full bg-transparent font-serif text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-2"
+                            className={`w-full bg-transparent ${robotoFlex.className} text-xl text-neutral-700 placeholder:text-neutral-300 focus:outline-none border-b border-neutral-200 focus:border-accent-navbar transition-colors pb-2 mb-2`}
                           />
                           {discordError && (
                             <p className="font-mono text-xs text-red-500 mb-3">{discordError}</p>
@@ -1081,7 +1019,7 @@ export default function OnboardPage() {
                           onClick={() => setDiscordDone(false)}
                           className="cursor-pointer hover:opacity-70 transition-opacity group"
                         >
-                          <p className="font-serif text-3xl text-neutral-900 leading-snug">
+                          <p className={questionAnswerClass}>
                             Discord:{" "}
                             <span className="text-accent-navbar">
                               {discord.trim() ? discord.replace(/^https?:\/\//, "") : "skipped"}

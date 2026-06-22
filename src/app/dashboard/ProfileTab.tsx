@@ -80,13 +80,14 @@ function buildDisplayProjects(
   projects: ProfileProject[] | undefined,
   badges: MyBadge[] | undefined,
   builderName: string,
+  hideClaimedHackathonProject = false,
 ): DisplayProjectItem[] {
   const items: DisplayProjectItem[] = [];
   const hackathonBadge = badges?.find(
     (badge) => badge.kind === "green-hackathon-builder" && badge.projectTitle,
   );
 
-  if (hackathonBadge?.projectTitle) {
+  if (hackathonBadge?.projectTitle && !hideClaimedHackathonProject) {
     const directoryProject =
       hackathonBadge.projectIndex !== undefined
         ? getHackathonProjectByIndex(hackathonBadge.projectIndex)
@@ -126,6 +127,12 @@ function getInitials(name: string): string {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function getFirstName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return name;
+  return trimmed.split(/\s+/)[0] ?? trimmed;
 }
 
 // ─── Hover-float animations (preserved from the original profile) ──────────────
@@ -518,7 +525,15 @@ function ReadOnlyTags({ items }: { items: string[] }) {
 
 const logoutButtonClass = `${robotoMono.className} inline-flex w-full touch-manipulation items-center justify-center rounded-full border border-accent-navbar/20 bg-accent-navbar px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-navbar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-navbar`;
 
-function LeftProfilePanel({ user, readOnly = false }: { user: ProfileUser; readOnly?: boolean }) {
+function LeftProfilePanel({
+  user,
+  readOnly = false,
+  showFirstNameOnCard = false,
+}: {
+  user: ProfileUser;
+  readOnly?: boolean;
+  showFirstNameOnCard?: boolean;
+}) {
   const { signOut } = useClerk();
   const updateProfile = useMutation(api.users.updateProfile);
   const initials = getInitials(user.name);
@@ -545,7 +560,7 @@ function LeftProfilePanel({ user, readOnly = false }: { user: ProfileUser; readO
         </div>
         <div className="min-w-0">
           <h1 className={`${robotoFlex.className} text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] text-neutral-900`}>
-            <FloatingName name={user.name} />
+            <FloatingName name={showFirstNameOnCard ? getFirstName(user.name) : user.name} />
           </h1>
           {user.location && (
             <p className="font-mono font-light text-[16px] uppercase tracking-wide text-neutral-500 truncate">
@@ -895,12 +910,14 @@ function RightPanel({
 }) {
   const router = useRouter();
   const myProjects = useQuery(api.projects.listMine, readOnly ? "skip" : {});
+  const currentUser = useQuery(api.users.getCurrentUser, readOnly ? "skip" : {});
   const userProjects = useQuery(api.projects.listForUser, readOnly ? { userId } : "skip");
   const projects: ProfileProject[] | undefined = readOnly ? userProjects : myProjects;
 
   const myBadges = useQuery(api.badges.listMine, readOnly ? "skip" : {});
   const userBadges = useQuery(api.badges.listForUser, readOnly ? { userId } : "skip");
   const badges = readOnly ? userBadges : myBadges;
+  const ensureMyBadges = useMutation(api.badges.ensureMine);
   const [siteOrigin, setSiteOrigin] = useState("");
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [isJoiningProject, setIsJoiningProject] = useState(false);
@@ -913,8 +930,14 @@ function RightPanel({
       : null;
 
   const displayProjects = useMemo(
-    () => buildDisplayProjects(projects, badges, builderName),
-    [projects, badges, builderName],
+    () =>
+      buildDisplayProjects(
+        projects,
+        badges,
+        builderName,
+        currentUser?.hiddenClaimedHackathonProjectOnDashboard === true,
+      ),
+    [projects, badges, builderName, currentUser?.hiddenClaimedHackathonProjectOnDashboard],
   );
   const hiddenProjectCount = Math.max(0, displayProjects.length - INITIAL_VISIBLE_PROJECTS);
   const visibleProjects =
@@ -925,6 +948,11 @@ function RightPanel({
   useEffect(() => {
     setSiteOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    if (readOnly) return;
+    void ensureMyBadges();
+  }, [ensureMyBadges, readOnly]);
 
   return (
     <>
@@ -984,6 +1012,7 @@ function RightPanel({
                               <ClaimedHackathonProjectActions
                                 trigger="minimal"
                                 menuVariant="panel"
+                                allowHideFromDashboard
                                 onEdit={() => router.push("/claim/project")}
                               />
                             </div>
@@ -1023,6 +1052,7 @@ function RightPanel({
                             variant="events"
                             trigger="minimal"
                             menuVariant="panel"
+                            allowHideFromDashboard
                             onEdit={() => setEditingProjectId(project._id)}
                           />
                         </div>
@@ -1098,13 +1128,15 @@ function RightPanel({
 export function ProfileTabContent({
   user,
   readOnly = false,
+  showFirstNameOnCard = false,
 }: {
   user: ProfileUser;
   readOnly?: boolean;
+  showFirstNameOnCard?: boolean;
 }) {
   return (
     <div className="flex w-full items-stretch gap-2.5">
-      <LeftProfilePanel user={user} readOnly={readOnly} />
+      <LeftProfilePanel user={user} readOnly={readOnly} showFirstNameOnCard={showFirstNameOnCard} />
       <RightPanel builderName={user.name} userId={user._id} readOnly={readOnly} />
     </div>
   );
@@ -1122,7 +1154,7 @@ export function ProfileTab() {
         <p className="font-mono text-sm text-white/80">Profile not found.</p>
       ) : (
         <div className="mx-auto w-full max-w-[1600px]">
-          <ProfileTabContent user={user} />
+          <ProfileTabContent user={user} showFirstNameOnCard />
         </div>
       )}
     </div>

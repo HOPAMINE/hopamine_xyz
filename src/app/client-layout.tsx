@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { isPortalRoute, isProjectsRoute, isGreenNavRoute } from "@/lib/navRoutes";
+import { getOnboardingPath } from "@/lib/claimRoutes";
 import { PORTAL_GRADIENT_BG } from "@/lib/layoutConstants";
 import { api } from "../../convex/_generated/api";
 import { Providers } from "./providers";
@@ -13,7 +14,7 @@ import { Providers } from "./providers";
 const convexConfigured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /** Routes that are exempt from the onboarding gate. */
-const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/profile-compare", "/hopathon", "/claim"];
+const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/profile-compare", "/hopathon"];
 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
@@ -46,7 +47,7 @@ function UserSyncInner() {
     if (!existing) return; // null (not loaded yet) or skip
     if (existing.onboardingCompletedAt) return; // already done
     if (ONBOARDING_EXEMPT.some((p) => pathname.startsWith(p))) return;
-    router.replace("/onboard");
+    router.replace(getOnboardingPath(pathname));
   }, [existing, pathname, router]);
 
   const updateLastSeen = useMutation(api.users.updateLastSeen);

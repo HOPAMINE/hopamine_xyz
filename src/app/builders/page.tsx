@@ -56,13 +56,13 @@ export default function BuildersPage() {
                 return (
                   <BuilderCard
                     key={builder._id}
+                    userId={builder._id}
                     name={builder.name}
                     username={builder.username}
                     avatarUrl={builder.avatarUrl}
                     bio={builder.bio}
                     skills={builder.skills ?? []}
                     interests={builder.interests ?? []}
-                    discordUsername={builder.socialLinks?.discord}
                     lastSeenAt={builder.lastSeenAt}
                     rot={rot}
                     triangles={triangles}

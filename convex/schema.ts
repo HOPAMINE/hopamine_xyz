@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { badgeKindValidator } from "./lib/badgeKinds";
 import { projectFieldValidator } from "./lib/projectFields";
 
 const availabilitySlot = v.object({
@@ -33,6 +34,8 @@ export default defineSchema({
     nowPlaying: v.optional(v.string()),
     lastSeenAt: v.optional(v.number()),
     onboardingCompletedAt: v.optional(v.number()),
+    /** When true, claimed hackathon project card is hidden on the user's dashboard. */
+    hiddenClaimedHackathonProjectOnDashboard: v.optional(v.boolean()),
     socialLinks: v.optional(v.record(v.string(), v.string())),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -67,6 +70,8 @@ export default defineSchema({
     userId: v.id("users"),
     role: projectMemberRoleValidator,
     addedAt: v.number(),
+    /** When set, this project is hidden from the member's dashboard view only. */
+    hiddenOnDashboardAt: v.optional(v.number()),
   })
     .index("by_project", ["projectId"])
     .index("by_user", ["userId"])
@@ -124,4 +129,17 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_builder_number", ["builderNumber"]),
+
+  badges: defineTable({
+    userId: v.id("users"),
+    kind: badgeKindValidator,
+    earnedAt: v.number(),
+    hackathonId: v.optional(v.string()),
+    hackathonParticipationId: v.optional(v.id("hackathonParticipations")),
+    hackathonClaimId: v.optional(v.id("hackathonClaims")),
+    projectId: v.optional(v.id("projects")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_kind", ["userId", "kind"])
+    .index("by_hackathon_participation", ["hackathonParticipationId"]),
 });

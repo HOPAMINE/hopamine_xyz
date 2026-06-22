@@ -1,7 +1,14 @@
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { HACKATHON_PROJECTS } from "../../shared/hackathonProjects";
+import {
+  HACKATHON_PROJECTS,
+  HOPAMINE_HACKATHON_STAFF_TITLE,
+} from "../../shared/hackathonProjects";
 import { normalizeOptionalProjectUrl } from "./projectUrls";
+import {
+  HOPAMINE_HACKATHON_STAFF_OWNER_ID,
+  ensureStaffProjectOwnerMembership,
+} from "./seedHackathonStaffProject";
 
 export const HACKATHON_DIRECTORY_SYSTEM_CLERK_ID = "system|hackathon-directory";
 export const HACKATHON_DIRECTORY_SYSTEM_EMAIL = "hackathon-directory@hopamine.internal";
@@ -64,8 +71,11 @@ export async function seedHackathonDirectoryProjects(ctx: MutationCtx): Promise<
       .withIndex("by_hackathon_index", (q) => q.eq("hackathonIndex", index))
       .unique();
 
+    const isStaffProject = project.title === HOPAMINE_HACKATHON_STAFF_TITLE;
+    const ownerId = isStaffProject ? HOPAMINE_HACKATHON_STAFF_OWNER_ID : systemUserId;
+
     const payload = {
-      userId: systemUserId,
+      userId: ownerId,
       field: project.field,
       title: project.title.trim(),
       blurb: project.blurb.trim(),
@@ -80,14 +90,20 @@ export async function seedHackathonDirectoryProjects(ctx: MutationCtx): Promise<
 
     if (existing) {
       await ctx.db.patch(existing._id, payload);
+      if (isStaffProject) {
+        await ensureStaffProjectOwnerMembership(ctx, existing._id, now);
+      }
       updated++;
       continue;
     }
 
-    await ctx.db.insert("projects", {
+    const projectId = await ctx.db.insert("projects", {
       ...payload,
       createdAt: now,
     });
+    if (isStaffProject) {
+      await ensureStaffProjectOwnerMembership(ctx, projectId, now);
+    }
     inserted++;
   }
 
