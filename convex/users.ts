@@ -107,6 +107,7 @@ export const updateProfile = mutation({
     skills: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
+    learning: v.optional(v.string()),
     discord: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -197,6 +198,10 @@ export const updateProfile = mutation({
     if (args.why !== undefined) {
       updates.why = trimText(args.why) || undefined;
     }
+
+    if (args.learning !== undefined) {
+      updates.learning = trimText(args.learning) || undefined;
+    }
     if (args.discord !== undefined) {
       const discord = args.discord.trim().replace(/^@/, "");
       if (discord && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(discord)) {
@@ -266,6 +271,7 @@ export const completeOnboarding = mutation({
     skills: v.array(v.string()),
     vision: v.string(),
     why: v.string(),
+    learning: v.optional(v.string()),
     discord: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -295,6 +301,7 @@ export const completeOnboarding = mutation({
       skills: normalizeSkills(args.skills),
       vision: args.vision.trim(),
       why: args.why.trim(),
+      learning: args.learning?.trim() || undefined,
       ...(socialLinks !== undefined ? { socialLinks } : {}),
       onboardingCompletedAt: Date.now(),
       updatedAt: Date.now(),

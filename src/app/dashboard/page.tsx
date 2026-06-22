@@ -19,7 +19,7 @@ type AccountTabId = (typeof ACCOUNT_TABS)[number]["id"];
 
 const pillBase = `${robotoMono.className} inline-flex shrink-0 touch-manipulation items-center rounded-full border border-white/35 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 sm:py-1 sm:text-[10px]`;
 
-const actionPillClass = `${pillBase} bg-accent-events text-white hover:bg-white hover:text-accent-events`;
+const actionPillClass = `${pillBase} bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar`;
 
 function AccountTabPills({
   activeTab,
@@ -42,8 +42,8 @@ function AccountTabPills({
             onClick={() => onSelect(tab.id)}
             className={
               isSelected
-                ? `${pillBase} bg-white text-accent-events`
-                : `${pillBase} bg-accent-events text-white hover:bg-white hover:text-accent-events`
+                ? `${pillBase} bg-white text-accent-navbar`
+                : `${pillBase} bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar`
             }
           >
             {tab.label}
@@ -92,7 +92,7 @@ function ProfilePageContent() {
   if (!clerkLoaded || convexLoading) {
     return (
       <main
-        className={`relative min-h-dvh w-full bg-accent-events pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
+        className={`relative min-h-dvh w-full bg-accent-navbar pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
       >
         <div className="mx-auto pt-10px w-full max-w-7xl">
           <p className={`${robotoMono.className} text-sm text-white/75`}>Loading…</p>
@@ -110,7 +110,7 @@ function ProfilePageContent() {
             {safeTab === "projects" && (
               <>
                 <h1
-                  className={`${robotoFlex.className} text-3xl font-semibold tracking-[-0.02em] sm:text-4xl md:text-5xl`}
+                  className={`${robotoFlex.className} text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl md:text-5xl`}
                 >
                   {heading}
                 </h1>

@@ -27,6 +27,7 @@ export default defineSchema({
     skills: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
+    learning: v.optional(v.string()),
     availability: v.optional(v.array(availabilitySlot)),
     nowPlaying: v.optional(v.string()),
     lastSeenAt: v.optional(v.number()),

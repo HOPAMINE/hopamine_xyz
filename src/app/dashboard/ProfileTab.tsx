@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { HACKATHON_FIELDS } from "@/lib/hackathonDirectory";
+import { formatProjectTitle } from "@/lib/formatProjectTitle";
+import { getPublicProfileUrl } from "@/lib/profileUrls";
+import { ClaimParticipationCard } from "../../../components/claim/ClaimParticipationCard";
+import {
+  PARTICIPATION_CARD_TOTAL_HEIGHT,
+  PARTICIPATION_CARD_WIDTH,
+} from "../../../components/claim/participationCardStyles";
 import { sortsMillGoudy } from "../../../fonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -11,16 +19,21 @@ const AV_SIZE = 63;
 const ACCENT = "#00a6f3";
 // Placeholder data — swap for real content once the backend is wired up.
 const TEMP_INTERESTS = ["TEMP", "TEMP", "TEMP", "TEMP"];
-const PROJECT_PLACEHOLDERS = [0, 1, 2, 3];
-const BADGE_PLACEHOLDERS = [0, 1, 2, 3, 4, 5];
 
 // The blue page gradient that the panels float on top of.
 const PAGE_GRADIENT =
   "linear-gradient(to bottom right,#00a6f3 0%,#00a6f3 35%,#cdeefc 62%,#f5fafc 82%,#fefefe 100%)";
 
 type ConvexUser = NonNullable<ReturnType<typeof useQuery<typeof api.users.getCurrentUser>>>;
+type MyProject = NonNullable<ReturnType<typeof useQuery<typeof api.projects.listMine>>>[number];
+type MyBadge = NonNullable<ReturnType<typeof useQuery<typeof api.badges.listMine>>>[number];
 
 // ─── Small utilities ──────────────────────────────────────────────────────────
+
+function formatMemberNames(members: MyProject["members"], fallbackName: string): string {
+  if (members.length === 0) return fallbackName;
+  return members.map((member) => member.name).join(", ");
+}
 
 function getInitials(name: string): string {
   return name
@@ -206,34 +219,6 @@ function InlineEdit({
   );
 }
 
-// ─── Logo Sun (placeholder mark for empty cards) ───────────────────────────────
-
-function LogoSun({ size = 64, logoRatio = 0.22 }: { size?: number; logoRatio?: number }) {
-  return (
-    <div className="flex items-center justify-center" style={{ width: size, height: size }}>
-      <style>{`
-        @keyframes sun-pulse {
-          0%   { transform: scale(1); }
-          50%  { transform: scale(1.18); }
-          100% { transform: scale(1); }
-        }
-      `}</style>
-      <div
-        className="flex items-center justify-center rounded-full"
-        style={{
-          width: size * 0.9,
-          height: size * 0.9,
-          background: "radial-gradient(circle, #00a6f3 40%, rgba(0,166,243,0.3) 62%, white 78%)",
-          animation: "sun-pulse 2s ease-in-out infinite",
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.svg" alt="" style={{ width: size * logoRatio, height: size * logoRatio, objectFit: "contain" }} />
-      </div>
-    </div>
-  );
-}
-
 // ─── Skill / interest chips (little blue boxes) ────────────────────────────────
 
 function BlueBoxes({ items }: { items: string[] }) {
@@ -313,6 +298,18 @@ function LeftProfilePanel({ user }: { user: ConvexUser }) {
         />
       </section>
 
+      {/* Learning */}
+      <section>
+        <h2 className="font-serif text-[28px] font-medium mb-2">
+          <FloatingHeader>Learning</FloatingHeader>
+        </h2>
+        <InlineEdit
+          value={user.learning ?? ""}
+          onSave={(v) => updateProfile({ learning: v || undefined })}
+          placeholder="What you're exploring right now…"
+        />
+      </section>
+
       {/* Skills */}
       <section>
         <h2 className="font-serif text-[28px] font-medium mb-2">
@@ -349,43 +346,119 @@ function LeftProfilePanel({ user }: { user: ConvexUser }) {
 
 // ─── Placeholder cards ─────────────────────────────────────────────────────────
 
-function ProjectPlaceholderCard() {
+function ProjectCard({ project, builderName }: { project: MyProject; builderName: string }) {
   return (
     <div className="bg-[#00a6f3] border border-white/20 rounded-[24px] p-[20px] w-[280px] h-[194px] shrink-0 flex flex-col justify-between overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" alt="" className="h-[34px] w-auto object-contain" />
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] text-right text-white">
-          Join This Project
+          {HACKATHON_FIELDS[project.field]}
         </p>
       </div>
       <div className="flex flex-col gap-1.5 pt-4">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] text-white/80">
-          Jane Doe – Placeholder Topic
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] text-white/80 truncate">
+          {formatMemberNames(project.members, builderName)}
         </p>
-        <p className={`${sortsMillGoudy.className} text-[29px] normal-case leading-[1.02] tracking-[-0.06em] text-white`}>
-          Project Title Here
+        <p className={`${sortsMillGoudy.className} text-[29px] normal-case leading-[1.02] tracking-[-0.06em] text-white line-clamp-1`}>
+          {formatProjectTitle(project.title)}
         </p>
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] leading-[1.4] text-white">
-          A short description of what this project does and why it matters.
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] leading-[1.4] text-white line-clamp-2">
+          {project.blurb}
         </p>
       </div>
     </div>
   );
 }
 
-// Badges are the project card's footprint rotated 90° (243 × 350 — portrait).
-function BadgePlaceholderCard() {
+function ProjectsEmptyCard() {
   return (
-    <div className="bg-[#00a6f3] border border-white/20 rounded-[20px] p-[16px] w-[160px] h-[224px] shrink-0 flex flex-col items-center justify-center gap-3 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-      <div className="rounded-full bg-white/15 p-3">
-        <LogoSun size={48} logoRatio={0.66} />
-      </div>
-      <p className="font-serif text-[18px] leading-tight text-white text-center">
-        Badge Name
+    <div className="border border-dashed border-[#00a6f3]/40 rounded-[24px] p-[20px] w-[280px] h-[194px] shrink-0 flex items-center justify-center text-center">
+      <p className="font-mono text-[12px] leading-[1.5] text-neutral-500">
+        No projects yet. Create one from the Projects tab to see it here.
       </p>
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.3px] text-white/80 text-center">
-        Placeholder
+    </div>
+  );
+}
+
+// The real badge cards are designed at ~391px wide; in the grid we render them
+// as smaller thumbnails by scaling the whole card down (preserves proportions).
+const BADGE_SCALE = 0.5;
+const BADGE_THUMB_WIDTH = PARTICIPATION_CARD_WIDTH * BADGE_SCALE;
+const BADGE_THUMB_HEIGHT = PARTICIPATION_CARD_TOTAL_HEIGHT * BADGE_SCALE;
+
+// Scales a full-size badge card down to a thumbnail. A CSS transform doesn't
+// affect layout box size, so we measure the card's real (untransformed) height
+// and size the clipping box from it — otherwise a too-short estimate crops the
+// bottom of the card.
+function ScaledBadgeThumb({ children }: { children: React.ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [naturalHeight, setNaturalHeight] = useState(PARTICIPATION_CARD_TOTAL_HEIGHT);
+
+  useEffect(() => {
+    if (innerRef.current) {
+      setNaturalHeight(innerRef.current.offsetHeight);
+    }
+  }, [children]);
+
+  return (
+    <div
+      className="shrink-0 overflow-hidden"
+      style={{ width: BADGE_THUMB_WIDTH, height: naturalHeight * BADGE_SCALE }}
+    >
+      <div
+        ref={innerRef}
+        style={{
+          width: PARTICIPATION_CARD_WIDTH,
+          transform: `scale(${BADGE_SCALE})`,
+          transformOrigin: "top left",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Each badge type renders its own designed card, selected off `badge.kind`.
+function BadgeCard({ badge, siteOrigin }: { badge: MyBadge; siteOrigin: string }) {
+  switch (badge.kind) {
+    case "green-hackathon-builder": {
+      const profileUrl =
+        siteOrigin && badge.username
+          ? getPublicProfileUrl(siteOrigin, badge.username)
+          : undefined;
+      return (
+        <ClaimParticipationCard
+          name={badge.name}
+          builderNumber={badge.builderNumber}
+          userSeed={badge.username}
+          projectTitle={badge.projectTitle}
+          projectBlurb={badge.projectBlurb}
+          profileUrl={profileUrl}
+          claimed
+          hideClaimedBadge
+        />
+      );
+    }
+    default:
+      return null;
+  }
+}
+
+// Shown when a user has no badges — same footprint as a badge thumbnail.
+function BadgesEmptyCard() {
+  return (
+    <div
+      className="bg-[#00a6f3] border border-white/20 rounded-[1rem] shrink-0 flex items-center justify-center text-center p-5"
+      style={{ width: BADGE_THUMB_WIDTH, height: BADGE_THUMB_HEIGHT }}
+    >
+      <p className="font-mono text-[11px] leading-[1.6] uppercase tracking-[0.3px] text-white/80">
+        No badges yet.
+        <br />
+        Claim your Green
+        <br />
+        Hackathon badge.
       </p>
     </div>
   );
@@ -393,7 +466,15 @@ function BadgePlaceholderCard() {
 
 // ─── Right panel: projects + badges ────────────────────────────────────────────
 
-function RightPanel() {
+function RightPanel({ builderName }: { builderName: string }) {
+  const projects = useQuery(api.projects.listMine);
+  const badges = useQuery(api.badges.listMine);
+  const [siteOrigin, setSiteOrigin] = useState("");
+
+  useEffect(() => {
+    setSiteOrigin(window.location.origin);
+  }, []);
+
   return (
     <section className="bg-white rounded-[40px] px-0 py-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex-1 min-w-0 flex flex-col gap-7 overflow-y-auto">
       {/* Projects */}
@@ -402,9 +483,15 @@ function RightPanel() {
           <FloatingHeader>Projects</FloatingHeader>
         </h2>
         <div className="flex items-stretch gap-5 overflow-x-auto pt-5 pb-2 pl-[40px]">
-          {PROJECT_PLACEHOLDERS.map((i) => (
-            <ProjectPlaceholderCard key={i} />
-          ))}
+          {projects === undefined ? (
+            <p className="font-mono text-[12px] text-neutral-500 py-6">Loading projects…</p>
+          ) : projects.length === 0 ? (
+            <ProjectsEmptyCard />
+          ) : (
+            projects.map((project) => (
+              <ProjectCard key={project._id} project={project} builderName={builderName} />
+            ))
+          )}
         </div>
       </div>
 
@@ -414,9 +501,17 @@ function RightPanel() {
           <FloatingHeader>Badges</FloatingHeader>
         </h2>
         <div className="flex items-stretch gap-5 overflow-x-auto pt-5 pb-2 pl-[40px]">
-          {BADGE_PLACEHOLDERS.map((i) => (
-            <BadgePlaceholderCard key={i} />
-          ))}
+          {badges === undefined ? (
+            <p className="font-mono text-[12px] text-neutral-500 py-6">Loading badges…</p>
+          ) : badges.length === 0 ? (
+            <BadgesEmptyCard />
+          ) : (
+            badges.map((badge) => (
+              <ScaledBadgeThumb key={badge.id}>
+                <BadgeCard badge={badge} siteOrigin={siteOrigin} />
+              </ScaledBadgeThumb>
+            ))
+          )}
         </div>
       </div>
     </section>
@@ -434,7 +529,7 @@ export function ProfileTabContent({ user }: { user: ConvexUser }) {
   return (
     <div className="flex w-full items-stretch gap-2.5">
       <LeftProfilePanel user={user} />
-      <RightPanel />
+      <RightPanel builderName={user.name} />
     </div>
   );
 }

@@ -221,6 +221,12 @@ export default function OnboardPage() {
   const [why, setWhy] = useState("")
   const [done, setDone] = useState(false)
 
+  const [learningDraft, setLearningDraft] = useState("")
+  const [learning, setLearning] = useState("")
+  const [learningDone, setLearningDone] = useState(false)
+  const [editingLearning, setEditingLearning] = useState(false)
+  const [tempLearning, setTempLearning] = useState("")
+
   const [discord, setDiscord] = useState("")
   const [discordError, setDiscordError] = useState("")
   const [discordDone, setDiscordDone] = useState(false)
@@ -294,6 +300,19 @@ export default function OnboardPage() {
     scrollDown()
   }
 
+  function submitLearning() {
+    if (!learningDraft.trim()) return
+    setLearning(learningDraft.trim())
+    setLearningDone(true)
+    scrollDown()
+  }
+
+  function saveLearning() {
+    if (!tempLearning.trim()) return
+    setLearning(tempLearning.trim())
+    setEditingLearning(false)
+  }
+
   function submitDiscord() {
     const trimmed = discord.trim().replace(/^@/, "")
     if (trimmed && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(trimmed)) {
@@ -319,6 +338,7 @@ export default function OnboardPage() {
         skills: skillsList.filter((s) => s.trim()),
         vision,
         why,
+        learning,
         discord: discord.trim() || undefined,
       })
       setConfirmed(true)
@@ -941,9 +961,81 @@ export default function OnboardPage() {
                 )}
               </AnimatePresence>
 
-              {/* Q7 — Discord ──────────────────────────────────────────── */}
+              {/* Q7 — Learning ─────────────────────────────────────────── */}
               <AnimatePresence>
                 {done && (
+                  <motion.div
+                    key="q7-learning"
+                    initial={{ opacity: 0, y: 22 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55, ease: "easeOut" }}
+                  >
+                    <AnimatePresence mode="wait">
+                      {!learningDone ? (
+                        <motion.div key="q7l-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">
+                            What are you learning about right now?
+                          </p>
+                          <AutoTextarea
+                            value={learningDraft}
+                            onChange={setLearningDraft}
+                            placeholder="Share what's capturing your curiosity…"
+                          />
+                          <div className="mt-4 flex items-center gap-4">
+                            <button
+                              onClick={submitLearning}
+                              disabled={!learningDraft.trim()}
+                              className={outlineBtn(!!learningDraft.trim())}
+                            >
+                              Continue
+                            </button>
+                            <span className="font-mono text-xs text-neutral-300">
+                              {learningDraft.trim().split(/\s+/).filter(Boolean).length} words
+                            </span>
+                          </div>
+                        </motion.div>
+                      ) : editingLearning ? (
+                        <motion.div key="q7l-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                          <p className="font-serif text-2xl text-neutral-900 mb-5">
+                            What are you learning about right now?
+                          </p>
+                          <AutoTextarea value={tempLearning} onChange={setTempLearning} placeholder="Share what's capturing your curiosity…" />
+                          <div className="mt-4 flex items-center gap-4">
+                            <button onClick={saveLearning} disabled={!tempLearning.trim()} className={outlineBtn(!!tempLearning.trim())}>
+                              Save
+                            </button>
+                            <button onClick={() => setEditingLearning(false)} className={smallOutlineBtn}>Cancel</button>
+                            <span className="font-mono text-xs text-neutral-300 ml-auto">
+                              {tempLearning.trim().split(/\s+/).filter(Boolean).length} words
+                            </span>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="q7l-done"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          onClick={() => { setTempLearning(learning); setEditingLearning(true) }}
+                          className="cursor-pointer hover:opacity-70 transition-opacity group"
+                        >
+                          <p className="font-serif text-3xl text-neutral-900 leading-snug mb-3">
+                            What you&apos;re learning:
+                            <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">edit</span>
+                          </p>
+                          <p className="font-serif text-3xl text-accent-navbar leading-snug italic">
+                            &ldquo;{learning}&rdquo;
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Q8 — Discord ──────────────────────────────────────────── */}
+              <AnimatePresence>
+                {learningDone && (
                   <motion.div
                     key="q7"
                     initial={{ opacity: 0, y: 22 }}
