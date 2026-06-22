@@ -25,6 +25,7 @@ export default defineSchema({
     timezone: v.optional(v.string()),
     archetypes: v.optional(v.array(v.string())),
     skills: v.optional(v.array(v.string())),
+    interests: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
     learning: v.optional(v.string()),
@@ -46,9 +47,20 @@ export default defineSchema({
     field: projectFieldValidator,
     title: v.string(),
     blurb: v.string(),
+    liveUrl: v.optional(v.string()),
+    demoUrl: v.optional(v.string()),
+    repoUrl: v.optional(v.string()),
+    joinCode: v.optional(v.string()),
+    /** Index into shared/hackathonProjects.ts for directory-seeded projects. */
+    hackathonIndex: v.optional(v.number()),
+    builderName: v.optional(v.string()),
+    builderDiscord: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_join_code", ["joinCode"])
+    .index("by_hackathon_index", ["hackathonIndex"]),
 
   projectMembers: defineTable({
     projectId: v.id("projects"),
@@ -75,6 +87,22 @@ export default defineSchema({
     .index("by_invited_user_and_status", ["invitedUserId", "status"])
     .index("by_project", ["projectId"])
     .index("by_project_and_invited_user", ["projectId", "invitedUserId"]),
+
+  projectJoinRequests: defineTable({
+    projectId: v.id("projects"),
+    requesterUserId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+    ),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_requester", ["requesterUserId"])
+    .index("by_project", ["projectId"])
+    .index("by_project_and_requester", ["projectId", "requesterUserId"])
+    .index("by_project_and_status", ["projectId", "status"]),
 
   hackathonClaims: defineTable({
     userId: v.id("users"),

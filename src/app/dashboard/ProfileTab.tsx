@@ -1,32 +1,116 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { HACKATHON_FIELDS } from "@/lib/hackathonDirectory";
-import { formatProjectTitle } from "@/lib/formatProjectTitle";
+import { Id } from "../../../convex/_generated/dataModel";
+import { HACKATHON_FIELDS, getHackathonProjectByIndex, type HackathonField } from "@/lib/hackathonDirectory";
+import { primaryProjectLink } from "@/lib/projectUrls";
 import { getPublicProfileUrl } from "@/lib/profileUrls";
+import { AddProjectCard } from "../../../components/projects/AddProjectCard";
+import { AddProjectForm } from "../../../components/projects/AddProjectForm";
+import { EditProjectForm } from "../../../components/projects/EditProjectForm";
+import { JoinProjectForm } from "../../../components/projects/JoinProjectForm";
+import {
+  ClaimedHackathonProjectActions,
+  ProjectActions,
+} from "../../../components/projects/ProjectActions";
+import { ProjectCard } from "../../../components/projects/ProjectCard";
+import { ProjectSectionHeaderActions } from "../../../components/projects/ProjectSectionHeaderActions";
+import {
+  dashboardProjectCardFootprintClassName,
+  projectCardAddReferenceClassName,
+} from "../../../components/projects/projectCardStyles";
 import { ClaimParticipationCard } from "../../../components/claim/ClaimParticipationCard";
 import {
   PARTICIPATION_CARD_TOTAL_HEIGHT,
   PARTICIPATION_CARD_WIDTH,
 } from "../../../components/claim/participationCardStyles";
-import { sortsMillGoudy } from "../../../fonts";
+import { robotoFlex, robotoMono } from "../../../fonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const AV_SIZE = 63;
 const ACCENT = "#00a6f3";
-// Placeholder data — swap for real content once the backend is wired up.
-const TEMP_INTERESTS = ["TEMP", "TEMP", "TEMP", "TEMP"];
 
 // The blue page gradient that the panels float on top of.
 const PAGE_GRADIENT =
   "linear-gradient(to bottom right,#00a6f3 0%,#00a6f3 35%,#cdeefc 62%,#f5fafc 82%,#fefefe 100%)";
 
 type ConvexUser = NonNullable<ReturnType<typeof useQuery<typeof api.users.getCurrentUser>>>;
+export type ProfileUser = {
+  _id: Id<"users">;
+  name: string;
+  username?: string;
+  avatarUrl: string;
+  bio?: string;
+  location?: string;
+  skills?: string[];
+  interests?: string[];
+  vision?: string;
+  learning?: string;
+  socialLinks?: Record<string, string>;
+};
 type MyProject = NonNullable<ReturnType<typeof useQuery<typeof api.projects.listMine>>>[number];
+type PublicProject = NonNullable<ReturnType<typeof useQuery<typeof api.projects.listForUser>>>[number];
+type ProfileProject = MyProject | PublicProject;
 type MyBadge = NonNullable<ReturnType<typeof useQuery<typeof api.badges.listMine>>>[number];
+
+type ClaimedDisplayProject = {
+  kind: "claimed";
+  id: string;
+  field: HackathonField;
+  title: string;
+  blurb: string;
+  builder: string;
+  externalHref?: string;
+};
+
+type CommunityDisplayProject = {
+  kind: "community";
+  project: ProfileProject;
+};
+
+type DisplayProjectItem = ClaimedDisplayProject | CommunityDisplayProject;
+
+function buildDisplayProjects(
+  projects: ProfileProject[] | undefined,
+  badges: MyBadge[] | undefined,
+  builderName: string,
+): DisplayProjectItem[] {
+  const items: DisplayProjectItem[] = [];
+  const hackathonBadge = badges?.find(
+    (badge) => badge.kind === "green-hackathon-builder" && badge.projectTitle,
+  );
+
+  if (hackathonBadge?.projectTitle) {
+    const directoryProject =
+      hackathonBadge.projectIndex !== undefined
+        ? getHackathonProjectByIndex(hackathonBadge.projectIndex)
+        : null;
+
+    items.push({
+      kind: "claimed",
+      id: "claimed-hackathon-project",
+      field: hackathonBadge.projectField ?? directoryProject?.field ?? "Other",
+      title: hackathonBadge.projectTitle,
+      blurb: hackathonBadge.projectBlurb ?? directoryProject?.blurb ?? "",
+      builder: builderName,
+      externalHref: directoryProject?.liveUrl ?? directoryProject?.demoUrl,
+    });
+  }
+
+  if (projects) {
+    for (const project of projects) {
+      items.push({ kind: "community", project });
+    }
+  }
+
+  return items;
+}
 
 // ─── Small utilities ──────────────────────────────────────────────────────────
 
@@ -163,8 +247,9 @@ function InlineEdit({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const skipBlurSaveRef = useRef(false);
 
-  async function handleBlur() {
+  async function confirmEdit() {
     if (draft === value) {
       setEditing(false);
       return;
@@ -176,9 +261,31 @@ function InlineEdit({
     }
   }
 
+  async function handleBlur() {
+    if (skipBlurSaveRef.current) {
+      skipBlurSaveRef.current = false;
+      return;
+    }
+    await confirmEdit();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setDraft(value);
+      setEditing(false);
+      return;
+    }
+    if (e.key === "Enter" && (!multiline || !e.shiftKey)) {
+      e.preventDefault();
+      skipBlurSaveRef.current = true;
+      void confirmEdit();
+    }
+  }
+
   if (editing) {
     const cls =
-      "w-full font-mono text-sm text-neutral-800 border border-[#00a6f3]/40 p-2 focus:outline-none focus:border-[#00a6f3] bg-white leading-relaxed resize-none overflow-hidden";
+      "w-full rounded-2xl font-mono text-sm text-neutral-800 border border-[#00a6f3]/60 p-3 focus:outline-none focus:border-[#00a6f3] focus:ring-2 focus:ring-[#00a6f3]/20 bg-white leading-relaxed resize-none overflow-hidden";
     function autoSize(el: HTMLTextAreaElement | null) {
       if (!el) return;
       el.style.height = "auto";
@@ -195,6 +302,7 @@ function InlineEdit({
           autoSize(e.target);
         }}
         onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
       />
     ) : (
       <input
@@ -204,31 +312,201 @@ function InlineEdit({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
       />
     );
   }
 
   return (
-    <div className="cursor-text" onClick={() => { setDraft(value); setEditing(true); }}>
+    <button
+      type="button"
+      className="group/edit w-full cursor-text rounded-xl border border-transparent px-2 py-1 text-left transition-all hover:border-[#00a6f3]/50 hover:bg-[#00a6f3]/[0.04] focus-visible:border-[#00a6f3]/60 focus-visible:bg-[#00a6f3]/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a6f3]/20"
+      onClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
+    >
       {displayContent ?? (value ? (
-        <p className="font-mono text-[15px] text-neutral-700 leading-relaxed">{value}</p>
+        <p className="font-mono text-[14px] text-neutral-700 leading-snug">{value}</p>
       ) : (
-        <p className="font-mono text-[15px] text-neutral-300 italic leading-relaxed">{placeholder}</p>
+        <p className="font-mono text-[14px] text-neutral-300 italic leading-snug">{placeholder}</p>
       ))}
+    </button>
+  );
+}
+
+// ─── Tag list editor (skills, interests) ─────────────────────────────────────
+
+const tagInputClass =
+  "min-w-0 flex-1 rounded-[8px] border border-[#00a6f3]/40 bg-white px-3 py-2 font-mono text-sm text-neutral-800 placeholder:text-neutral-300 focus:border-[#00a6f3] focus:outline-none disabled:opacity-60";
+
+const tagInputEmptyClass =
+  "min-w-0 flex-1 rounded-[8px] border border-dashed border-[#00a6f3]/50 bg-white px-3 py-2 font-mono text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-[#00a6f3] focus:outline-none disabled:opacity-60";
+
+const tagPillClass =
+  "inline-flex items-center gap-1.5 rounded-[8px] border border-[#00a6f3]/40 bg-white py-1.5 pl-3 pr-2 font-mono text-[13px] uppercase tracking-wide text-neutral-800";
+
+function parseLearningItems(learning: string | undefined): string[] {
+  if (!learning?.trim()) return [];
+  return learning
+    .split(/,\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatLearningItems(items: string[]): string | undefined {
+  if (items.length === 0) return undefined;
+  return items.join(", ");
+}
+
+function TagListEditor({
+  items,
+  onChange,
+  placeholder,
+  addLabel,
+}: {
+  items: string[];
+  onChange: (items: string[]) => Promise<void>;
+  placeholder: string;
+  addLabel: string;
+}) {
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showInput, setShowInput] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showInput) {
+      inputRef.current?.focus();
+    }
+  }, [showInput]);
+
+  async function persist(next: string[]) {
+    setSaving(true);
+    try {
+      await onChange(next);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function commitDraft(closeAfter: boolean) {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      if (closeAfter) {
+        setDraft("");
+        setShowInput(false);
+      }
+      return;
+    }
+    if (saving) return;
+
+    const exists = items.some((item) => item.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      setDraft("");
+      if (closeAfter) {
+        setShowInput(false);
+      }
+      return;
+    }
+
+    await persist([...items, trimmed]);
+    setDraft("");
+    if (closeAfter) {
+      setShowInput(false);
+    }
+  }
+
+  async function removeItem(index: number) {
+    if (saving) return;
+    await persist(items.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item, index) => (
+            <span key={`${item}-${index}`} className={tagPillClass}>
+              {item}
+              <button
+                type="button"
+                onClick={() => void removeItem(index)}
+                disabled={saving}
+                aria-label={`Remove ${item}`}
+                className="inline-flex size-4 items-center justify-center rounded-full text-[11px] leading-none text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-50"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {showInput ? (
+        <div className="flex items-stretch gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void commitDraft(true);
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setDraft("");
+                setShowInput(false);
+              }
+            }}
+            onBlur={() => {
+              if (!draft.trim()) {
+                setShowInput(false);
+              }
+            }}
+            placeholder={placeholder}
+            disabled={saving}
+            className={items.length === 0 ? tagInputEmptyClass : tagInputClass}
+          />
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => void commitDraft(true)}
+            disabled={!draft.trim() || saving}
+            aria-label={addLabel}
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-[#00a6f3] font-mono text-lg font-semibold leading-none text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            +
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowInput(true)}
+          disabled={saving}
+          className="font-mono text-[13px] font-semibold uppercase tracking-wide text-[#00a6f3] transition-opacity hover:opacity-80 disabled:opacity-50"
+        >
+          {addLabel}
+        </button>
+      )}
     </div>
   );
 }
 
-// ─── Skill / interest chips (little blue boxes) ────────────────────────────────
+function ReadOnlyText({ value }: { value?: string }) {
+  if (!value?.trim()) return null;
+  return <p className="font-mono text-[14px] leading-snug text-neutral-700">{value}</p>;
+}
 
-function BlueBoxes({ items }: { items: string[] }) {
+function ReadOnlyTags({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+
   return (
     <div className="flex flex-wrap gap-2">
-      {items.map((item, i) => (
-        <span
-          key={`${item}-${i}`}
-          className="font-mono text-[13px] uppercase tracking-wide text-white bg-[#00a6f3] px-3 py-1.5 rounded-[8px]"
-        >
+      {items.map((item) => (
+        <span key={item} className={tagPillClass}>
           {item}
         </span>
       ))}
@@ -238,12 +516,15 @@ function BlueBoxes({ items }: { items: string[] }) {
 
 // ─── Left panel: profile info ──────────────────────────────────────────────────
 
-function LeftProfilePanel({ user }: { user: ConvexUser }) {
+const logoutButtonClass = `${robotoMono.className} inline-flex w-full touch-manipulation items-center justify-center rounded-full border border-accent-navbar/20 bg-accent-navbar px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-navbar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-navbar`;
+
+function LeftProfilePanel({ user, readOnly = false }: { user: ProfileUser; readOnly?: boolean }) {
+  const { signOut } = useClerk();
   const updateProfile = useMutation(api.users.updateProfile);
   const initials = getInitials(user.name);
 
   return (
-    <aside className="bg-white rounded-[40px] px-[18px] py-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] w-[387px] shrink-0 flex flex-col gap-7 overflow-hidden">
+    <aside className="bg-white rounded-[40px] px-6 py-5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] w-[387px] shrink-0 flex flex-col gap-4 overflow-hidden">
       {/* Identity row: avatar + name + location */}
       <div className="flex items-end gap-[15px]">
         <div className="relative shrink-0" style={{ width: AV_SIZE, height: AV_SIZE }}>
@@ -263,7 +544,7 @@ function LeftProfilePanel({ user }: { user: ConvexUser }) {
           />
         </div>
         <div className="min-w-0">
-          <h1 className="font-serif text-[36px] leading-[1.05] tracking-[-0.01em] text-neutral-900">
+          <h1 className={`${robotoFlex.className} text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] text-neutral-900`}>
             <FloatingName name={user.name} />
           </h1>
           {user.location && (
@@ -274,109 +555,219 @@ function LeftProfilePanel({ user }: { user: ConvexUser }) {
         </div>
       </div>
 
-      {/* Why I Work */}
+      {/* Bio */}
       <section>
-        <h2 className="font-serif text-[28px] font-medium mb-2">
-          <FloatingHeader>Why I Work</FloatingHeader>
+        <h2 className={`${robotoFlex.className} text-[24px] font-semibold mb-1 tracking-[-0.02em]`}>
+          <FloatingHeader>Bio</FloatingHeader>
         </h2>
-        <InlineEdit
-          value={user.why ?? ""}
-          onSave={(v) => updateProfile({ why: v || undefined })}
-          placeholder="What drives you…"
-        />
-      </section>
-
-      {/* Vision */}
-      <section>
-        <h2 className="font-serif text-[28px] font-medium mb-2">
-          <FloatingHeader>Vision</FloatingHeader>
-        </h2>
-        <InlineEdit
-          value={user.vision ?? ""}
-          onSave={(v) => updateProfile({ vision: v || undefined })}
-          placeholder="Your north star…"
-        />
+        {readOnly ? (
+          <ReadOnlyText value={user.bio} />
+        ) : (
+          <InlineEdit
+            value={user.bio ?? ""}
+            onSave={(v) => updateProfile({ bio: v || undefined })}
+            placeholder="A short intro about you…"
+          />
+        )}
       </section>
 
       {/* Learning */}
       <section>
-        <h2 className="font-serif text-[28px] font-medium mb-2">
+        <h2 className={`${robotoFlex.className} text-[24px] font-semibold mb-1 tracking-[-0.02em]`}>
           <FloatingHeader>Learning</FloatingHeader>
         </h2>
-        <InlineEdit
-          value={user.learning ?? ""}
-          onSave={(v) => updateProfile({ learning: v || undefined })}
-          placeholder="What you're exploring right now…"
-        />
+        {readOnly ? (
+          <ReadOnlyTags items={parseLearningItems(user.learning)} />
+        ) : (
+          <TagListEditor
+            items={parseLearningItems(user.learning)}
+            placeholder="Climate policy, Rust, product strategy…"
+            addLabel="Add learning"
+            onChange={async (items) => {
+              await updateProfile({ learning: formatLearningItems(items) });
+            }}
+          />
+        )}
       </section>
 
       {/* Skills */}
       <section>
-        <h2 className="font-serif text-[28px] font-medium mb-2">
+        <h2 className={`${robotoFlex.className} text-[24px] font-semibold mb-1 tracking-[-0.02em]`}>
           <FloatingHeader>Skills</FloatingHeader>
         </h2>
-        <InlineEdit
-          value={(user.skills ?? []).join(", ")}
-          onSave={async (v) => {
-            const skills = v.split(",").map((s) => s.trim()).filter(Boolean);
-            await updateProfile({ skills: skills.length > 0 ? skills : undefined });
-          }}
-          placeholder="React, TypeScript, Product design…"
-          multiline={false}
-          displayContent={
-            user.skills && user.skills.length > 0 ? (
-              <BlueBoxes items={user.skills} />
-            ) : undefined
-          }
-        />
+        {readOnly ? (
+          <ReadOnlyTags items={user.skills ?? []} />
+        ) : (
+          <TagListEditor
+            items={user.skills ?? []}
+            placeholder="React, TypeScript, Product design…"
+            addLabel="Add skills"
+            onChange={async (skills) => {
+              await updateProfile({ skills: skills.length > 0 ? skills : undefined });
+            }}
+          />
+        )}
       </section>
 
-      {/* Interests — placeholder TEMP data */}
+      {/* Interests */}
       <section>
-        <h2 className="font-serif text-[28px] font-medium mb-2">
+        <h2 className={`${robotoFlex.className} text-[24px] font-semibold mb-1 tracking-[-0.02em]`}>
           <FloatingHeader>Interests</FloatingHeader>
         </h2>
-        <BlueBoxes items={TEMP_INTERESTS} />
+        {readOnly ? (
+          <ReadOnlyTags items={user.interests ?? []} />
+        ) : (
+          <TagListEditor
+            items={user.interests ?? []}
+            placeholder="Climate tech, urban farming…"
+            addLabel="Add interests"
+            onChange={async (interests) => {
+              await updateProfile({ interests: interests.length > 0 ? interests : undefined });
+            }}
+          />
+        )}
       </section>
 
-      {/* Intentional empty space below — reserved for future content */}
+      {/* Discord */}
+      <section>
+        <h2 className={`${robotoFlex.className} text-[24px] font-semibold mb-1 tracking-[-0.02em]`}>
+          <FloatingHeader>Discord</FloatingHeader>
+        </h2>
+        {readOnly ? (
+          <ReadOnlyText value={user.socialLinks?.discord} />
+        ) : (
+          <InlineEdit
+            value={user.socialLinks?.discord ?? ""}
+            onSave={(v) => updateProfile({ discord: v || undefined })}
+            placeholder="yourname"
+            multiline={false}
+          />
+        )}
+      </section>
+
+      {/* Vision */}
+      <section>
+        <h2 className={`${robotoFlex.className} text-[24px] font-semibold mb-1 tracking-[-0.02em]`}>
+          <FloatingHeader>Vision</FloatingHeader>
+        </h2>
+        {readOnly ? (
+          <ReadOnlyText value={user.vision} />
+        ) : (
+          <InlineEdit
+            value={user.vision ?? ""}
+            onSave={(v) => updateProfile({ vision: v || undefined })}
+            placeholder="Your north star…"
+          />
+        )}
+      </section>
+
+      {!readOnly ? (
+        <button
+          type="button"
+          onClick={() => signOut({ redirectUrl: "/" })}
+          className={logoutButtonClass}
+        >
+          Logout
+        </button>
+      ) : null}
     </aside>
   );
 }
 
-// ─── Placeholder cards ─────────────────────────────────────────────────────────
+// ─── Project modals ────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, builderName }: { project: MyProject; builderName: string }) {
+function JoinProjectModal({
+  onClose,
+  onJoined,
+}: {
+  onClose: () => void;
+  onJoined: () => void;
+}) {
   return (
-    <div className="bg-[#00a6f3] border border-white/20 rounded-[24px] p-[20px] w-[280px] h-[194px] shrink-0 flex flex-col justify-between overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-      <div className="flex items-start justify-between gap-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.svg" alt="" className="h-[34px] w-auto object-contain" />
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] text-right text-white">
-          {HACKATHON_FIELDS[project.field]}
-        </p>
-      </div>
-      <div className="flex flex-col gap-1.5 pt-4">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] text-white/80 truncate">
-          {formatMemberNames(project.members, builderName)}
-        </p>
-        <p className={`${sortsMillGoudy.className} text-[29px] normal-case leading-[1.02] tracking-[-0.06em] text-white line-clamp-1`}>
-          {formatProjectTitle(project.title)}
-        </p>
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3px] leading-[1.4] text-white line-clamp-2">
-          {project.blurb}
-        </p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-lg rounded-[24px] bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Join project with code"
+      >
+        <h3 className={`${robotoMono.className} mb-5 text-sm font-semibold uppercase tracking-wide text-neutral-500`}>
+          Join with code
+        </h3>
+        <JoinProjectForm variant="light" onCancel={onClose} onJoined={onJoined} />
       </div>
     </div>
   );
 }
 
-function ProjectsEmptyCard() {
+function AddProjectModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   return (
-    <div className="border border-dashed border-[#00a6f3]/40 rounded-[24px] p-[20px] w-[280px] h-[194px] shrink-0 flex items-center justify-center text-center">
-      <p className="font-mono text-[12px] leading-[1.5] text-neutral-500">
-        No projects yet. Create one from the Projects tab to see it here.
-      </p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-2xl rounded-[24px] bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add project"
+      >
+        <AddProjectForm variant="light" onCancel={onClose} onCreated={onCreated} />
+      </div>
+    </div>
+  );
+}
+
+function EditProjectModal({
+  project,
+  onClose,
+  onSaved,
+}: {
+  project: MyProject;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-2xl rounded-[24px] bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit ${project.title}`}
+      >
+        <h3 className={`${robotoMono.className} mb-5 text-sm font-semibold uppercase tracking-wide text-neutral-500`}>
+          Edit project
+        </h3>
+        <EditProjectForm
+          variant="light"
+          projectId={project._id}
+          initialField={project.field}
+          initialTitle={project.title}
+          initialBlurb={project.blurb}
+          initialLiveUrl={project.liveUrl ?? ""}
+          initialJoinCode={project.joinCode ?? ""}
+          onCancel={onClose}
+          onSaved={onSaved}
+        />
+      </div>
     </div>
   );
 }
@@ -447,74 +838,253 @@ function BadgeCard({ badge, siteOrigin }: { badge: MyBadge; siteOrigin: string }
 }
 
 // Shown when a user has no badges — same footprint as a badge thumbnail.
-function BadgesEmptyCard() {
+function BadgesEmptyCard({ readOnly = false }: { readOnly?: boolean }) {
+  if (readOnly) {
+    return (
+      <p className="font-mono text-[12px] text-neutral-500 py-6 shrink-0">No badges yet.</p>
+    );
+  }
+
   return (
     <div
-      className="bg-[#00a6f3] border border-white/20 rounded-[1rem] shrink-0 flex items-center justify-center text-center p-5"
-      style={{ width: BADGE_THUMB_WIDTH, height: BADGE_THUMB_HEIGHT }}
+      className="flex shrink-0 flex-col items-center justify-center gap-3 rounded-[1rem] border border-dashed border-accent-events/40 bg-white p-5 text-center"
+      style={{ width: BADGE_THUMB_WIDTH, minHeight: BADGE_THUMB_HEIGHT }}
     >
-      <p className="font-mono text-[11px] leading-[1.6] uppercase tracking-[0.3px] text-white/80">
+      <p className="font-mono text-[11px] leading-[1.6] uppercase tracking-[0.3px] text-accent-events/75">
         No badges yet.
         <br />
         Claim your Green
         <br />
         Hackathon badge.
       </p>
+      <Link
+        href="/claim/participation"
+        className={`${robotoMono.className} inline-flex items-center rounded-full border border-white/35 bg-accent-events px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-events`}
+      >
+        Claim badge
+      </Link>
     </div>
   );
 }
 
 // ─── Right panel: projects + badges ────────────────────────────────────────────
 
-function RightPanel({ builderName }: { builderName: string }) {
-  const projects = useQuery(api.projects.listMine);
-  const badges = useQuery(api.badges.listMine);
+const INITIAL_VISIBLE_PROJECTS = 2;
+
+function SeeMoreProjectsButton({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${robotoMono.className} ${dashboardProjectCardFootprintClassName} ${projectCardAddReferenceClassName} flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-wide text-accent-events`}
+    >
+      See {count} more
+      <span aria-hidden>→</span>
+    </button>
+  );
+}
+
+function RightPanel({
+  builderName,
+  userId,
+  readOnly = false,
+}: {
+  builderName: string;
+  userId: Id<"users">;
+  readOnly?: boolean;
+}) {
+  const router = useRouter();
+  const myProjects = useQuery(api.projects.listMine, readOnly ? "skip" : {});
+  const userProjects = useQuery(api.projects.listForUser, readOnly ? { userId } : "skip");
+  const projects: ProfileProject[] | undefined = readOnly ? userProjects : myProjects;
+
+  const myBadges = useQuery(api.badges.listMine, readOnly ? "skip" : {});
+  const userBadges = useQuery(api.badges.listForUser, readOnly ? { userId } : "skip");
+  const badges = readOnly ? userBadges : myBadges;
   const [siteOrigin, setSiteOrigin] = useState("");
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [isJoiningProject, setIsJoiningProject] = useState(false);
+  const [showAllProjects, setShowAllProjects] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<Id<"projects"> | null>(null);
+
+  const editingProject =
+    !readOnly && myProjects
+      ? (myProjects.find((project) => project._id === editingProjectId) ?? null)
+      : null;
+
+  const displayProjects = useMemo(
+    () => buildDisplayProjects(projects, badges, builderName),
+    [projects, badges, builderName],
+  );
+  const hiddenProjectCount = Math.max(0, displayProjects.length - INITIAL_VISIBLE_PROJECTS);
+  const visibleProjects =
+    !showAllProjects ? displayProjects.slice(0, INITIAL_VISIBLE_PROJECTS) : displayProjects;
+  const canShowMore = hiddenProjectCount > 0 && !showAllProjects;
+  const projectsLoading = projects === undefined || badges === undefined;
 
   useEffect(() => {
     setSiteOrigin(window.location.origin);
   }, []);
 
   return (
-    <section className="bg-white rounded-[40px] px-0 py-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex-1 min-w-0 flex flex-col gap-7 overflow-y-auto">
-      {/* Projects */}
-      <div>
-        <h2 className="font-serif text-[32px] leading-none text-neutral-900 pl-[40px]">
-          <FloatingHeader>Projects</FloatingHeader>
-        </h2>
-        <div className="flex items-stretch gap-5 overflow-x-auto pt-5 pb-2 pl-[40px]">
-          {projects === undefined ? (
-            <p className="font-mono text-[12px] text-neutral-500 py-6">Loading projects…</p>
-          ) : projects.length === 0 ? (
-            <ProjectsEmptyCard />
-          ) : (
-            projects.map((project) => (
-              <ProjectCard key={project._id} project={project} builderName={builderName} />
-            ))
-          )}
-        </div>
-      </div>
+    <>
+      <section className="bg-white rounded-[40px] px-0 py-9 shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex-1 min-w-0 flex flex-col gap-10 overflow-y-auto">
+        {/* Projects */}
+        <div className="min-w-0 py-1">
+          <div className={`flex items-center justify-between gap-4 pl-10 pr-10 ${readOnly ? "" : ""}`}>
+            <h2 className={`${robotoFlex.className} text-[32px] font-semibold leading-none tracking-[-0.02em] text-neutral-900`}>
+              <FloatingHeader>Projects</FloatingHeader>
+            </h2>
+            {!readOnly ? (
+              <ProjectSectionHeaderActions
+                onAddProject={() => setIsAddingProject(true)}
+                onJoinWithCode={() => setIsJoiningProject(true)}
+              />
+            ) : null}
+          </div>
+          <div className="min-w-0 px-10 pt-6 pb-4">
+            {projectsLoading ? (
+              <p className="font-mono text-[12px] text-neutral-500 py-6">Loading projects…</p>
+            ) : displayProjects.length === 0 ? (
+              readOnly ? (
+                <p className="font-mono text-[12px] text-neutral-500 py-6">No projects yet.</p>
+              ) : (
+              <div className={`${dashboardProjectCardFootprintClassName} flex shrink-0 flex-col`}>
+                <AddProjectCard
+                  variant="dashboard"
+                  className="w-full"
+                  onClick={() => setIsAddingProject(true)}
+                />
+              </div>
+              )
+            ) : (
+              <div className="overflow-x-auto overflow-y-hidden pb-1">
+                <div className="flex w-max max-w-none flex-nowrap items-start gap-4">
+                  {visibleProjects.map((item) => {
+                    if (item.kind === "claimed") {
+                      return (
+                        <div
+                          key={item.id}
+                          className={`${dashboardProjectCardFootprintClassName} flex shrink-0 flex-col`}
+                        >
+                          <ProjectCard
+                            fieldLabel={HACKATHON_FIELDS[item.field]}
+                            title={item.title}
+                            builder={item.builder}
+                            blurb={item.blurb}
+                            showHackathonBranding={false}
+                            showLinkPills={false}
+                            hoverEffect="none"
+                            interactive={Boolean(item.externalHref)}
+                            externalHref={item.externalHref}
+                            onOpen={() => {}}
+                          />
+                          {!readOnly ? (
+                            <div className="mt-2 flex justify-end">
+                              <ClaimedHackathonProjectActions
+                                trigger="minimal"
+                                menuVariant="panel"
+                                onEdit={() => router.push("/claim/project")}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    }
 
-      {/* Badges */}
-      <div>
-        <h2 className="font-serif text-[32px] leading-none text-neutral-900 pl-[40px]">
-          <FloatingHeader>Badges</FloatingHeader>
-        </h2>
-        <div className="flex items-stretch gap-5 overflow-x-auto pt-5 pb-2 pl-[40px]">
-          {badges === undefined ? (
-            <p className="font-mono text-[12px] text-neutral-500 py-6">Loading badges…</p>
-          ) : badges.length === 0 ? (
-            <BadgesEmptyCard />
-          ) : (
-            badges.map((badge) => (
-              <ScaledBadgeThumb key={badge.id}>
-                <BadgeCard badge={badge} siteOrigin={siteOrigin} />
-              </ScaledBadgeThumb>
-            ))
-          )}
+                    const project = item.project;
+                    const projectHref = primaryProjectLink(project);
+
+                    return (
+                    <div
+                      key={project._id}
+                      className={`${dashboardProjectCardFootprintClassName} flex shrink-0 flex-col`}
+                    >
+                      <ProjectCard
+                        fieldLabel={HACKATHON_FIELDS[project.field]}
+                        title={project.title}
+                        builder={formatMemberNames(project.members, builderName)}
+                        blurb={project.blurb}
+                        liveUrl={project.liveUrl}
+                        showHackathonBranding={false}
+                        showLinkPills={false}
+                        hoverEffect="none"
+                        interactive={Boolean(projectHref)}
+                        externalHref={projectHref}
+                        onOpen={() => {}}
+                      />
+                      {!readOnly ? (
+                        <div className="mt-2 flex justify-end">
+                          <ProjectActions
+                            projectId={project._id}
+                            projectTitle={project.title}
+                            viewerRole={project.viewerRole}
+                            hasPendingJoinRequest={project.hasPendingJoinRequest}
+                            variant="events"
+                            trigger="minimal"
+                            menuVariant="panel"
+                            onEdit={() => setEditingProjectId(project._id)}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                    );
+                  })}
+                  {canShowMore ? (
+                    <SeeMoreProjectsButton
+                      count={hiddenProjectCount}
+                      onClick={() => setShowAllProjects(true)}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </section>
+
+        {/* Badges */}
+        <div className="py-1">
+          <h2 className={`${robotoFlex.className} text-[32px] font-semibold leading-none tracking-[-0.02em] text-neutral-900 pl-10`}>
+            <FloatingHeader>Badges</FloatingHeader>
+          </h2>
+          <div className="flex items-stretch gap-5 overflow-x-auto pt-6 pb-4 pl-10 pr-10">
+            {badges === undefined ? (
+              <p className="font-mono text-[12px] text-neutral-500 py-6">Loading badges…</p>
+            ) : badges.length === 0 ? (
+              <BadgesEmptyCard readOnly={readOnly} />
+            ) : (
+              badges.map((badge) => (
+                <ScaledBadgeThumb key={badge.id}>
+                  <BadgeCard badge={badge} siteOrigin={siteOrigin} />
+                </ScaledBadgeThumb>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      {!readOnly && isAddingProject ? (
+        <AddProjectModal
+          onClose={() => setIsAddingProject(false)}
+          onCreated={() => setIsAddingProject(false)}
+        />
+      ) : null}
+
+      {!readOnly && isJoiningProject ? (
+        <JoinProjectModal
+          onClose={() => setIsJoiningProject(false)}
+          onJoined={() => setIsJoiningProject(false)}
+        />
+      ) : null}
+
+      {!readOnly && editingProject ? (
+        <EditProjectModal
+          project={editingProject}
+          onClose={() => setEditingProjectId(null)}
+          onSaved={() => setEditingProjectId(null)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -525,11 +1095,17 @@ function RightPanel({ builderName }: { builderName: string }) {
  * Embed this where a host already provides the blue background (e.g. /dashboard);
  * use {@link ProfileTab} when you need the standalone full-page version.
  */
-export function ProfileTabContent({ user }: { user: ConvexUser }) {
+export function ProfileTabContent({
+  user,
+  readOnly = false,
+}: {
+  user: ProfileUser;
+  readOnly?: boolean;
+}) {
   return (
     <div className="flex w-full items-stretch gap-2.5">
-      <LeftProfilePanel user={user} />
-      <RightPanel builderName={user.name} />
+      <LeftProfilePanel user={user} readOnly={readOnly} />
+      <RightPanel builderName={user.name} userId={user._id} readOnly={readOnly} />
     </div>
   );
 }

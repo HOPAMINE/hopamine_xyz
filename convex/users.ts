@@ -105,6 +105,7 @@ export const updateProfile = mutation({
     location: v.optional(v.string()),
     archetypes: v.optional(v.array(v.string())),
     skills: v.optional(v.array(v.string())),
+    interests: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
     learning: v.optional(v.string()),
@@ -189,6 +190,10 @@ export const updateProfile = mutation({
 
     if (args.skills !== undefined) {
       updates.skills = normalizeSkills(args.skills);
+    }
+
+    if (args.interests !== undefined) {
+      updates.interests = normalizeSkills(args.interests);
     }
 
     if (args.vision !== undefined) {
@@ -381,23 +386,71 @@ export const updateNowPlaying = mutation({
 
 export const listBuilders = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.string(),
+      username: v.optional(v.string()),
+      avatarUrl: v.string(),
+      bio: v.optional(v.string()),
+      location: v.optional(v.string()),
+      skills: v.optional(v.array(v.string())),
+      interests: v.optional(v.array(v.string())),
+      projectTitle: v.optional(v.string()),
+      projectBlurb: v.optional(v.string()),
+      lastSeenAt: v.optional(v.number()),
+      socialLinks: v.optional(v.record(v.string(), v.string())),
+    }),
+  ),
   handler: async (ctx) => {
     const users = await ctx.db
       .query("users")
       .withIndex("by_onboarding_completed_at", (q) => q.gt("onboardingCompletedAt", 0))
       .take(100);
-    users.sort((a, b) => b.createdAt - a.createdAt);
-    return users.map((u) => ({
-      _id: u._id,
-      name: u.name,
-      username: u.username,
-      avatarUrl: u.avatarUrl,
-      location: u.location,
-      archetypes: u.archetypes,
-      skills: u.skills,
-      lastSeenAt: u.lastSeenAt,
-      socialLinks: u.socialLinks,
-    }));
+
+    const enriched = await Promise.all(
+      users.map(async (user) => {
+        const ownedProjects = await ctx.db
+          .query("projects")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect();
+
+        const latestProject = ownedProjects.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+
+        let projectTitle: string | undefined = latestProject?.title;
+        let projectBlurb: string | undefined = latestProject?.blurb;
+
+        if (!projectTitle) {
+          const claim = await ctx.db
+            .query("hackathonClaims")
+            .withIndex("by_user", (q) => q.eq("userId", user._id))
+            .unique();
+          projectTitle = claim?.projectTitle;
+          projectBlurb = claim?.blurb ?? projectBlurb;
+        }
+
+        return {
+          _id: user._id,
+          name: user.name,
+          username: user.username,
+          avatarUrl: user.avatarUrl,
+          bio: user.bio,
+          location: user.location,
+          skills: user.skills,
+          interests: user.interests,
+          projectTitle,
+          projectBlurb,
+          lastSeenAt: user.lastSeenAt,
+          socialLinks: user.socialLinks,
+        };
+      }),
+    );
+
+    enriched.sort(
+      (a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0),
+    );
+
+    return enriched;
   },
 });
 
@@ -428,6 +481,54 @@ export const migrateSkillsToArray = mutation({
       }
     }
     return { migrated };
+  },
+});
+
+const publicProfileValidator = v.object({
+  _id: v.id("users"),
+  name: v.string(),
+  username: v.optional(v.string()),
+  avatarUrl: v.string(),
+  bio: v.optional(v.string()),
+  location: v.optional(v.string()),
+  skills: v.optional(v.array(v.string())),
+  interests: v.optional(v.array(v.string())),
+  vision: v.optional(v.string()),
+  learning: v.optional(v.string()),
+  socialLinks: v.optional(v.record(v.string(), v.string())),
+});
+
+export const getPublicProfileByUsername = query({
+  args: { username: v.string() },
+  returns: v.union(publicProfileValidator, v.null()),
+  handler: async (ctx, args) => {
+    const username = args.username.trim().toLowerCase();
+    if (!username) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+
+    if (!user?.username || !user.onboardingCompletedAt) {
+      return null;
+    }
+
+    return {
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      location: user.location,
+      skills: user.skills,
+      interests: user.interests,
+      vision: user.vision,
+      learning: user.learning,
+      socialLinks: user.socialLinks,
+    };
   },
 });
 

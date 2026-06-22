@@ -6,6 +6,10 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { projectFieldValidator } from "./lib/projectFields";
+import { normalizeOptionalProjectUrl } from "./lib/projectUrls";
+import { generateUniqueJoinCode, normalizeJoinCode } from "./lib/projectJoinCode";
+import { isHackathonDirectoryProject } from "./lib/seedHackathonDirectory";
+import { HACKATHON_PROJECT_COUNT } from "./lib/hackathonProjectCount";
 import { Doc, Id } from "./_generated/dataModel";
 
 const projectMemberSummaryValidator = v.object({
@@ -16,6 +20,19 @@ const projectMemberSummaryValidator = v.object({
   role: v.union(v.literal("owner"), v.literal("member")),
 });
 
+const hackathonDirectoryProjectValidator = v.object({
+  _id: v.id("projects"),
+  hackathonIndex: v.number(),
+  field: projectFieldValidator,
+  title: v.string(),
+  builder: v.string(),
+  discord: v.optional(v.string()),
+  blurb: v.string(),
+  liveUrl: v.optional(v.string()),
+  demoUrl: v.optional(v.string()),
+  repoUrl: v.optional(v.string()),
+});
+
 const projectWithMembersValidator = v.object({
   _id: v.id("projects"),
   _creationTime: v.number(),
@@ -23,9 +40,15 @@ const projectWithMembersValidator = v.object({
   field: projectFieldValidator,
   title: v.string(),
   blurb: v.string(),
+  liveUrl: v.optional(v.string()),
+  demoUrl: v.optional(v.string()),
+  repoUrl: v.optional(v.string()),
+  joinCode: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
   members: v.array(projectMemberSummaryValidator),
+  viewerRole: v.union(v.literal("owner"), v.literal("member"), v.null()),
+  hasPendingJoinRequest: v.boolean(),
 });
 
 const collaboratorSearchResultValidator = v.object({
@@ -43,6 +66,16 @@ const pendingInviteValidator = v.object({
   field: projectFieldValidator,
   inviterName: v.string(),
   inviterAvatarUrl: v.string(),
+  createdAt: v.number(),
+});
+
+const pendingJoinRequestValidator = v.object({
+  _id: v.id("projectJoinRequests"),
+  projectId: v.id("projects"),
+  projectTitle: v.string(),
+  requesterUserId: v.id("users"),
+  requesterName: v.string(),
+  requesterAvatarUrl: v.string(),
   createdAt: v.number(),
 });
 
@@ -102,6 +135,117 @@ async function attachMembersToProject(ctx: QueryCtx, project: Doc<"projects">) {
   return {
     ...project,
     members: await getProjectMembers(ctx, project._id),
+  };
+}
+
+async function getProjectMembership(
+  ctx: QueryCtx | MutationCtx,
+  projectId: Id<"projects">,
+  userId: Id<"users">,
+) {
+  return await ctx.db
+    .query("projectMembers")
+    .withIndex("by_project_and_user", (q) =>
+      q.eq("projectId", projectId).eq("userId", userId),
+    )
+    .unique();
+}
+
+async function assertIsProjectOwner(
+  ctx: MutationCtx,
+  projectId: Id<"projects">,
+  userId: Id<"users">,
+) {
+  const membership = await getProjectMembership(ctx, projectId, userId);
+  if (!membership || membership.role !== "owner") {
+    throw new Error("Only project owners can perform this action");
+  }
+  return membership;
+}
+
+async function deleteProjectAndRelations(ctx: MutationCtx, projectId: Id<"projects">) {
+  const members = await ctx.db
+    .query("projectMembers")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+
+  for (const member of members) {
+    await ctx.db.delete(member._id);
+  }
+
+  const invites = await ctx.db
+    .query("projectInvites")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+
+  for (const invite of invites) {
+    await ctx.db.delete(invite._id);
+  }
+
+  const joinRequests = await ctx.db
+    .query("projectJoinRequests")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+
+  for (const request of joinRequests) {
+    await ctx.db.delete(request._id);
+  }
+
+  await ctx.db.delete(projectId);
+}
+
+function validateProjectText(title: string, blurb: string) {
+  const trimmedTitle = trimText(title);
+  const trimmedBlurb = trimText(blurb);
+
+  if (!trimmedTitle) {
+    throw new Error("Project title is required");
+  }
+
+  if (trimmedTitle.length > 120) {
+    throw new Error("Project title must be 120 characters or fewer");
+  }
+
+  if (!trimmedBlurb) {
+    throw new Error("Project description is required");
+  }
+
+  if (trimmedBlurb.length > 500) {
+    throw new Error("Project description must be 500 characters or fewer");
+  }
+
+  return { title: trimmedTitle, blurb: trimmedBlurb };
+}
+
+async function enrichProjectForViewer(
+  ctx: QueryCtx,
+  project: Doc<"projects">,
+  viewerId: Id<"users"> | null,
+) {
+  const attached = await attachMembersToProject(ctx, project);
+  const membership = viewerId
+    ? await getProjectMembership(ctx, project._id, viewerId)
+    : null;
+
+  let hasPendingJoinRequest = false;
+  if (viewerId && !membership) {
+    const pendingRequest = await ctx.db
+      .query("projectJoinRequests")
+      .withIndex("by_project_and_requester", (q) =>
+        q.eq("projectId", project._id).eq("requesterUserId", viewerId),
+      )
+      .unique();
+    hasPendingJoinRequest = pendingRequest?.status === "pending";
+  }
+
+  const { joinCode: storedJoinCode, ...projectFields } = project;
+
+  return {
+    ...projectFields,
+    members: attached.members,
+    joinCode: membership?.role === "owner" ? storedJoinCode : undefined,
+    viewerRole: membership?.role ?? null,
+    hasPendingJoinRequest,
   };
 }
 
@@ -166,7 +310,36 @@ export const listMine = query({
     ).filter((project): project is NonNullable<typeof project> => project !== null);
 
     const enriched = await Promise.all(
-      projects.map((project) => attachMembersToProject(ctx, project)),
+      projects.map(async (project) => {
+        const membership = memberships.find((row) => row.projectId === project._id);
+        const base = await enrichProjectForViewer(ctx, project, user._id);
+        return {
+          ...base,
+          viewerRole: membership?.role ?? "member",
+        };
+      }),
+    );
+
+    return enriched.sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+export const listForUser = query({
+  args: { userId: v.id("users") },
+  returns: v.array(projectWithMembersValidator),
+  handler: async (ctx, args) => {
+    const memberships = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const projectIds = [...new Set(memberships.map((row) => row.projectId))];
+    const projects = (
+      await Promise.all(projectIds.map((projectId) => ctx.db.get("projects", projectId)))
+    ).filter((project): project is NonNullable<typeof project> => project !== null);
+
+    const enriched = await Promise.all(
+      projects.map((project) => enrichProjectForViewer(ctx, project, null)),
     );
 
     return enriched.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -282,6 +455,7 @@ export const create = mutation({
     field: projectFieldValidator,
     title: v.string(),
     blurb: v.string(),
+    liveUrl: v.optional(v.string()),
     inviteUserIds: v.array(v.id("users")),
   },
   returns: v.id("projects"),
@@ -323,12 +497,18 @@ export const create = mutation({
     }
 
     const now = Date.now();
+    const normalizedLiveUrl = args.liveUrl
+      ? normalizeOptionalProjectUrl(args.liveUrl)
+      : undefined;
+    const joinCode = await generateUniqueJoinCode(ctx);
 
     const projectId = await ctx.db.insert("projects", {
       userId: user._id,
       field: args.field,
       title,
       blurb,
+      joinCode,
+      ...(normalizedLiveUrl ? { liveUrl: normalizedLiveUrl } : {}),
       createdAt: now,
       updatedAt: now,
     });
@@ -448,6 +628,480 @@ export const declineInvite = mutation({
     }
 
     await ctx.db.patch(invite._id, {
+      status: "declined",
+      respondedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+export const listHackathonDirectory = query({
+  args: {},
+  returns: v.array(hackathonDirectoryProjectValidator),
+  handler: async (ctx) => {
+    const projects = await Promise.all(
+      Array.from({ length: HACKATHON_PROJECT_COUNT }, (_, index) =>
+        ctx.db
+          .query("projects")
+          .withIndex("by_hackathon_index", (q) => q.eq("hackathonIndex", index))
+          .unique(),
+      ),
+    );
+
+    return projects
+      .filter((project): project is NonNullable<typeof project> => project !== null)
+      .sort((a, b) => a.hackathonIndex! - b.hackathonIndex!)
+      .map((project) => ({
+        _id: project._id,
+        hackathonIndex: project.hackathonIndex!,
+        field: project.field,
+        title: project.title,
+        builder: project.builderName ?? "Green Hackathon",
+        discord: project.builderDiscord,
+        blurb: project.blurb,
+        liveUrl: project.liveUrl,
+        demoUrl: project.demoUrl,
+        repoUrl: project.repoUrl,
+      }));
+  },
+});
+
+export const listDiscoverable = query({
+  args: {},
+  returns: v.array(projectWithMembersValidator),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    let viewer: Doc<"users"> | null = null;
+
+    if (identity) {
+      viewer = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+    }
+
+    const projects = (await ctx.db.query("projects").collect()).filter(
+      (project) => !isHackathonDirectoryProject(project),
+    );
+    const enriched = await Promise.all(
+      projects.map((project) => enrichProjectForViewer(ctx, project, viewer?._id ?? null)),
+    );
+
+    return enriched.sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+export const listPendingJoinRequests = query({
+  args: {},
+  returns: v.array(pendingJoinRequestValidator),
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const ownedMemberships = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const ownedProjectIds = ownedMemberships
+      .filter((row) => row.role === "owner")
+      .map((row) => row.projectId);
+
+    if (ownedProjectIds.length === 0) {
+      return [];
+    }
+
+    const requestsByProject = await Promise.all(
+      ownedProjectIds.map((projectId) =>
+        ctx.db
+          .query("projectJoinRequests")
+          .withIndex("by_project_and_status", (q) =>
+            q.eq("projectId", projectId).eq("status", "pending"),
+          )
+          .collect(),
+      ),
+    );
+
+    const pending = requestsByProject.flat();
+    const enriched = await Promise.all(
+      pending.map(async (request) => {
+        const project = await ctx.db.get("projects", request.projectId);
+        const requester = await ctx.db.get("users", request.requesterUserId);
+        if (!project || !requester) return null;
+
+        return {
+          _id: request._id,
+          projectId: request.projectId,
+          projectTitle: project.title,
+          requesterUserId: request.requesterUserId,
+          requesterName: requester.name,
+          requesterAvatarUrl: requester.avatarUrl,
+          createdAt: request.createdAt,
+        };
+      }),
+    );
+
+    return enriched
+      .filter((request): request is NonNullable<typeof request> => request !== null)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+export const update = mutation({
+  args: {
+    projectId: v.id("projects"),
+    field: v.optional(projectFieldValidator),
+    title: v.optional(v.string()),
+    blurb: v.optional(v.string()),
+    liveUrl: v.optional(v.string()),
+    inviteUserIds: v.optional(v.array(v.id("users"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    await assertIsProjectOwner(ctx, args.projectId, user._id);
+
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const nextTitle = args.title ?? project.title;
+    const nextBlurb = args.blurb ?? project.blurb;
+    const { title, blurb } = validateProjectText(nextTitle, nextBlurb);
+    const now = Date.now();
+
+    const patch: {
+      field: Doc<"projects">["field"];
+      title: string;
+      blurb: string;
+      updatedAt: number;
+      liveUrl?: string;
+      joinCode?: string;
+    } = {
+      field: args.field ?? project.field,
+      title,
+      blurb,
+      updatedAt: now,
+    };
+
+    if (args.liveUrl !== undefined) {
+      patch.liveUrl = normalizeOptionalProjectUrl(args.liveUrl);
+    }
+
+    if (!project.joinCode) {
+      patch.joinCode = await generateUniqueJoinCode(ctx);
+    }
+
+    await ctx.db.patch(args.projectId, patch);
+
+    if (args.inviteUserIds) {
+      const uniqueInviteIds = [...new Set(args.inviteUserIds)].filter(
+        (inviteUserId) => inviteUserId !== user._id,
+      );
+
+      if (uniqueInviteIds.length > 12) {
+        throw new Error("You can invite up to 12 builders");
+      }
+
+      for (const inviteUserId of uniqueInviteIds) {
+        const invitee = await ctx.db.get("users", inviteUserId);
+        if (!invitee) {
+          throw new Error("One or more selected builders could not be found");
+        }
+
+        await assertCanInviteUser(ctx, args.projectId, inviteUserId);
+
+        const existingInvite = await ctx.db
+          .query("projectInvites")
+          .withIndex("by_project_and_invited_user", (q) =>
+            q.eq("projectId", args.projectId).eq("invitedUserId", inviteUserId),
+          )
+          .unique();
+
+        if (existingInvite?.status === "declined") {
+          await ctx.db.patch(existingInvite._id, {
+            invitedByUserId: user._id,
+            status: "pending",
+            createdAt: now,
+            respondedAt: undefined,
+          });
+          continue;
+        }
+
+        await ctx.db.insert("projectInvites", {
+          projectId: args.projectId,
+          invitedUserId: inviteUserId,
+          invitedByUserId: user._id,
+          status: "pending",
+          createdAt: now,
+        });
+      }
+    }
+
+    return null;
+  },
+});
+
+export const leave = mutation({
+  args: { projectId: v.id("projects") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const membership = await getProjectMembership(ctx, args.projectId, user._id);
+
+    if (!membership) {
+      throw new Error("You are not a member of this project");
+    }
+
+    if (membership.role === "owner") {
+      const allMembers = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect();
+
+      if (allMembers.length > 1) {
+        throw new Error("Project owners cannot leave while other members remain");
+      }
+
+      await deleteProjectAndRelations(ctx, args.projectId);
+      return null;
+    }
+
+    await ctx.db.delete(membership._id);
+    await ctx.db.patch(args.projectId, {
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+export const remove = mutation({
+  args: {
+    projectId: v.id("projects"),
+    confirmTitle: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    await assertIsProjectOwner(ctx, args.projectId, user._id);
+
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    if (trimText(args.confirmTitle) !== project.title) {
+      throw new Error("Project name does not match");
+    }
+
+    await deleteProjectAndRelations(ctx, args.projectId);
+    return null;
+  },
+});
+
+export const requestJoin = mutation({
+  args: { projectId: v.id("projects") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const project = await ctx.db.get("projects", args.projectId);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const existingMember = await getProjectMembership(ctx, args.projectId, user._id);
+    if (existingMember) {
+      throw new Error("You are already on this project");
+    }
+
+    const existingInvite = await ctx.db
+      .query("projectInvites")
+      .withIndex("by_project_and_invited_user", (q) =>
+        q.eq("projectId", args.projectId).eq("invitedUserId", user._id),
+      )
+      .unique();
+
+    if (existingInvite?.status === "pending") {
+      throw new Error("You already have a pending invite for this project");
+    }
+
+    const existingRequest = await ctx.db
+      .query("projectJoinRequests")
+      .withIndex("by_project_and_requester", (q) =>
+        q.eq("projectId", args.projectId).eq("requesterUserId", user._id),
+      )
+      .unique();
+
+    if (existingRequest?.status === "pending") {
+      throw new Error("You already requested to join this project");
+    }
+
+    const now = Date.now();
+
+    if (existingRequest?.status === "declined") {
+      await ctx.db.patch(existingRequest._id, {
+        status: "pending",
+        createdAt: now,
+        respondedAt: undefined,
+      });
+      return null;
+    }
+
+    await ctx.db.insert("projectJoinRequests", {
+      projectId: args.projectId,
+      requesterUserId: user._id,
+      status: "pending",
+      createdAt: now,
+    });
+
+    return null;
+  },
+});
+
+export const joinWithCode = mutation({
+  args: { code: v.string() },
+  returns: v.object({
+    projectId: v.id("projects"),
+    projectTitle: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const normalizedCode = normalizeJoinCode(args.code);
+
+    if (normalizedCode.length < 4) {
+      throw new Error("Enter a valid project code");
+    }
+
+    const project = await ctx.db
+      .query("projects")
+      .withIndex("by_join_code", (q) => q.eq("joinCode", normalizedCode))
+      .unique();
+
+    if (!project) {
+      throw new Error("No project found with that code");
+    }
+
+    const existingMember = await getProjectMembership(ctx, project._id, user._id);
+    if (existingMember) {
+      throw new Error("You are already on this project");
+    }
+
+    const now = Date.now();
+
+    await ctx.db.insert("projectMembers", {
+      projectId: project._id,
+      userId: user._id,
+      role: "member",
+      addedAt: now,
+    });
+
+    const pendingInvite = await ctx.db
+      .query("projectInvites")
+      .withIndex("by_project_and_invited_user", (q) =>
+        q.eq("projectId", project._id).eq("invitedUserId", user._id),
+      )
+      .unique();
+
+    if (pendingInvite?.status === "pending") {
+      await ctx.db.patch(pendingInvite._id, {
+        status: "accepted",
+        respondedAt: now,
+      });
+    }
+
+    const pendingRequest = await ctx.db
+      .query("projectJoinRequests")
+      .withIndex("by_project_and_requester", (q) =>
+        q.eq("projectId", project._id).eq("requesterUserId", user._id),
+      )
+      .unique();
+
+    if (pendingRequest?.status === "pending") {
+      await ctx.db.patch(pendingRequest._id, {
+        status: "accepted",
+        respondedAt: now,
+      });
+    }
+
+    await ctx.db.patch(project._id, {
+      updatedAt: now,
+    });
+
+    return {
+      projectId: project._id,
+      projectTitle: project.title,
+    };
+  },
+});
+
+export const acceptJoinRequest = mutation({
+  args: { requestId: v.id("projectJoinRequests") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const request = await ctx.db.get("projectJoinRequests", args.requestId);
+
+    if (!request) {
+      throw new Error("Join request not found");
+    }
+
+    if (request.status !== "pending") {
+      throw new Error("This join request is no longer pending");
+    }
+
+    await assertIsProjectOwner(ctx, request.projectId, user._id);
+
+    const existingMember = await getProjectMembership(
+      ctx,
+      request.projectId,
+      request.requesterUserId,
+    );
+
+    const now = Date.now();
+
+    if (!existingMember) {
+      await ctx.db.insert("projectMembers", {
+        projectId: request.projectId,
+        userId: request.requesterUserId,
+        role: "member",
+        addedAt: now,
+      });
+    }
+
+    await ctx.db.patch(args.requestId, {
+      status: "accepted",
+      respondedAt: now,
+    });
+
+    await ctx.db.patch(request.projectId, {
+      updatedAt: now,
+    });
+
+    return null;
+  },
+});
+
+export const declineJoinRequest = mutation({
+  args: { requestId: v.id("projectJoinRequests") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const request = await ctx.db.get("projectJoinRequests", args.requestId);
+
+    if (!request) {
+      throw new Error("Join request not found");
+    }
+
+    if (request.status !== "pending") {
+      throw new Error("This join request is no longer pending");
+    }
+
+    await assertIsProjectOwner(ctx, request.projectId, user._id);
+
+    await ctx.db.patch(args.requestId, {
       status: "declined",
       respondedAt: Date.now(),
     });

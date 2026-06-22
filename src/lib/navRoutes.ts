@@ -2,6 +2,7 @@ export const PORTAL_ROUTES = ["/home", "/projects", "/builders", "/directory", "
 
 export const NAV_LINKS = [
   { href: "/projects", label: "Projects" },
+  { href: "/builders", label: "Discover" },
   { href: "/events", label: "Events" },
 ] as const;
 
@@ -20,9 +21,5 @@ export function isProjectsRoute(pathname: string): boolean {
 }
 
 export function isGreenNavRoute(pathname: string): boolean {
-  return (
-    isEventsRoute(pathname) ||
-    isProjectsRoute(pathname) ||
-    pathname.startsWith("/profile/")
-  );
+  return isProjectsRoute(pathname) || isEventsRoute(pathname) || pathname.startsWith("/profile/");
 }

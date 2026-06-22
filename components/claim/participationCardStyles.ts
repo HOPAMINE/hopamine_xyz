@@ -19,7 +19,7 @@ export const PARTICIPATION_CARD_WIDTH = PARTICIPATION_CARD_HERO_WIDTH;
 export const PARTICIPATION_CARD_FOOTER_MIN_HEIGHT = 260;
 
 /** QR code render size in the card footer. */
-export const PARTICIPATION_CARD_QR_SIZE = 86;
+export const PARTICIPATION_CARD_QR_SIZE = 120;
 
 /** Matches card `rounded-[1.875rem]`. */
 export const PARTICIPATION_CARD_BORDER_RADIUS = 30;

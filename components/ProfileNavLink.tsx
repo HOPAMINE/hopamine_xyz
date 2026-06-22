@@ -28,7 +28,7 @@ function UserCircleIcon({ className }: { className?: string }) {
   );
 }
 
-const profileBase =
+const profileAvatar =
   "inline-flex size-10 shrink-0 touch-manipulation items-center justify-center overflow-hidden rounded-full border-2 border-white/90 bg-white/10 text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 const getStartedMarketing =
@@ -39,9 +39,11 @@ const getStartedEvents =
 
 export function ProfileNavLink({
   className = "",
+  showLabel = false,
 }: {
   /** e.g. `md:hidden` (mobile toolbar) vs desktop list item */
   className?: string;
+  showLabel?: boolean;
 }) {
   const { user, isLoaded } = useUser();
   const pathname = usePathname();
@@ -76,21 +78,24 @@ export function ProfileNavLink({
   return (
     <Link
       href="/dashboard"
-      className={`${profileBase} ${className}`}
-      aria-label={label}
+      className={`inline-flex items-center gap-4 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${className}`}
+      aria-label={showLabel ? undefined : label}
       title="Dashboard"
     >
-      {user.imageUrl ? (
-        <Image
-          src={user.imageUrl}
-          alt=""
-          width={48}
-          height={48}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <UserCircleIcon className="h-[22px] w-[22px]" />
-      )}
+      {showLabel ? <span>Profile</span> : null}
+      <span className={profileAvatar} aria-hidden={showLabel || undefined}>
+        {user.imageUrl ? (
+          <Image
+            src={user.imageUrl}
+            alt=""
+            width={48}
+            height={48}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <UserCircleIcon className="h-[22px] w-[22px]" />
+        )}
+      </span>
     </Link>
   );
 }

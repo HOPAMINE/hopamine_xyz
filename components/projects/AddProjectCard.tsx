@@ -1,20 +1,20 @@
 "use client";
 
-import { robotoMono } from "../../fonts";
+import { ProjectPlaceholderCard } from "./ProjectPlaceholderCard";
 
 type AddProjectCardProps = {
   onClick?: () => void;
+  variant?: "events" | "dashboard";
+  className?: string;
 };
 
-export function AddProjectCard({ onClick }: AddProjectCardProps) {
+export function AddProjectCard({ onClick, variant = "events", className = "" }: AddProjectCardProps) {
   return (
-    <button
-      type="button"
+    <ProjectPlaceholderCard
+      label="Add project"
       onClick={onClick}
-      aria-label="Add project"
-      className={`${robotoMono.className} flex min-h-[15.18rem] w-full items-center justify-center rounded-[1.875rem] border border-dashed border-white/40 p-6 text-sm text-white/75 transition-colors hover:border-white hover:text-white`}
-    >
-      Add project
-    </button>
+      variant={variant}
+      className={className}
+    />
   );
 }

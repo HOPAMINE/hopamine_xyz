@@ -3,18 +3,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isGreenNavRoute, NAV_LINKS } from "@/lib/navRoutes";
+import { isGreenNavRoute, isPortalRoute, NAV_LINKS } from "@/lib/navRoutes";
 import { MobileMenu } from "./MobileMenu";
+import { NavbarNotifications } from "./NavbarNotifications";
 import { ProfileNavLink } from "./ProfileNavLink";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const isPortal = isPortalRoute(pathname);
   const isGreenNav = isGreenNavRoute(pathname);
   const mobileNavLinks = NAV_LINKS.map(({ href, label }) => ({ href, label }));
 
   return (
     <header
-      className={`fixed top-[max(20px,env(safe-area-inset-top))] right-[max(20px,env(safe-area-inset-right))] left-[max(20px,env(safe-area-inset-left))] z-50 m-0 border border-white/70 ${isGreenNav ? "bg-accent-events" : "bg-accent-navbar"}`}
+      className={`fixed top-[max(20px,env(safe-area-inset-top))] rounded-full right-[max(20px,env(safe-area-inset-right))] left-[max(20px,env(safe-area-inset-left))] z-50 m-0 border border-black/20 ${isGreenNav ? "bg-accent-events" : "bg-accent-navbar"}`}
     >
       <nav
         className="mx-auto flex h-[4.5rem] items-center justify-between gap-3 px-4 font-mono text-sm font-bold uppercase tracking-wide text-white sm:px-6"
@@ -42,6 +44,7 @@ export default function Navbar() {
           />
         </Link>
         <div className="flex shrink-0 items-center gap-2 md:gap-3">
+          {isPortal ? <NavbarNotifications /> : null}
           <ProfileNavLink className="md:hidden" />
           <MobileMenu links={mobileNavLinks} variant={isGreenNav ? "events" : "default"} />
           <ul className="hidden items-center md:flex md:flex-wrap md:justify-end md:gap-6 lg:gap-8">
@@ -56,7 +59,7 @@ export default function Navbar() {
               </li>
             ))}
             <li className="flex items-center">
-              <ProfileNavLink />
+              <ProfileNavLink showLabel />
             </li>
           </ul>
         </div>

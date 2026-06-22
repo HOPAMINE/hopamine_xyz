@@ -114,11 +114,17 @@ export const ClaimParticipationCard = forwardRef<HTMLElement, ClaimParticipation
                   size={PARTICIPATION_CARD_QR_SIZE}
                   bgColor={PARTICIPATION_CARD_GREEN}
                   fgColor="#ffffff"
-                  className="h-auto w-[5.4rem]"
+                  style={{ width: PARTICIPATION_CARD_QR_SIZE, height: "auto" }}
                 />
               </div>
             ) : (
-              <div className="flex h-[5.4rem] w-[5.4rem] items-center justify-center rounded-md border border-dashed border-white/25 bg-accent-events/80">
+              <div
+                className="flex items-center justify-center rounded-md border border-dashed border-white/25 bg-accent-events/80"
+                style={{
+                  width: PARTICIPATION_CARD_QR_SIZE,
+                  height: PARTICIPATION_CARD_QR_SIZE,
+                }}
+              >
                 <span
                   className={`${robotoMono.className} px-1 text-center text-[14px] mt-4 mb-10 font-semibold uppercase leading-tight tracking-wide text-white/45`}
                 >
@@ -128,21 +134,21 @@ export const ClaimParticipationCard = forwardRef<HTMLElement, ClaimParticipation
             )}
           </div>
 
-          <div className="flex shrink-0 flex-col items-end justify-between gap-4 text-right">
-            <div className="flex flex-col items-end gap-2.5">
+          <div className="flex shrink-0 flex-col items-end justify-between gap-3 text-right">
+            <div className="flex flex-col items-end gap-2">
               <h3
-                className={`${robotoMono.className} max-w-[8.75rem] text-[12px] font-bold uppercase leading-snug tracking-wide text-white`}
+                className={`${sortsMillGoudy.className} min-w-[10.25rem] max-w-[10.75rem] text-[1.35rem] normal-case leading-[1.05] tracking-[-0.04em] text-white`}
               >
                 {displayProjectTitle}
               </h3>
               <p
-                className={`${robotoMono.className} max-w-[8.75rem] line-clamp-5 text-[11px] font-semibold uppercase leading-snug tracking-wide text-white`}
+                className={`${robotoMono.className} min-w-[10.25rem] max-w-[10.75rem] line-clamp-5 text-[10px] font-semibold uppercase leading-snug tracking-wide text-white`}
               >
                 {displayProjectDescription}
               </p>
             </div>
 
-            <div className="flex flex-col items-end gap-2.5">
+            <div className="flex flex-col items-end gap-2">
               <p
                 className={`${robotoMono.className} text-[11px] font-semibold uppercase tracking-wide text-white/70`}
               >

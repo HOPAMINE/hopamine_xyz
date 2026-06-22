@@ -13,7 +13,11 @@ import type * as hackathonClaims from "../hackathonClaims.js";
 import type * as hackathonParticipations from "../hackathonParticipations.js";
 import type * as lib_hackathonProjectCount from "../lib/hackathonProjectCount.js";
 import type * as lib_projectFields from "../lib/projectFields.js";
+import type * as lib_projectJoinCode from "../lib/projectJoinCode.js";
+import type * as lib_projectUrls from "../lib/projectUrls.js";
+import type * as lib_seedHackathonDirectory from "../lib/seedHackathonDirectory.js";
 import type * as projects from "../projects.js";
+import type * as seedHackathonProjects from "../seedHackathonProjects.js";
 import type * as users from "../users.js";
 
 import type {
@@ -28,7 +32,11 @@ declare const fullApi: ApiFromModules<{
   hackathonParticipations: typeof hackathonParticipations;
   "lib/hackathonProjectCount": typeof lib_hackathonProjectCount;
   "lib/projectFields": typeof lib_projectFields;
+  "lib/projectJoinCode": typeof lib_projectJoinCode;
+  "lib/projectUrls": typeof lib_projectUrls;
+  "lib/seedHackathonDirectory": typeof lib_seedHackathonDirectory;
   projects: typeof projects;
+  seedHackathonProjects: typeof seedHackathonProjects;
   users: typeof users;
 }>;
 

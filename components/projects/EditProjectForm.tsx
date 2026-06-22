@@ -8,9 +8,15 @@ import { HACKATHON_FIELDS, type HackathonField } from "@/lib/hackathonDirectory"
 import { robotoMono } from "../../fonts";
 import { ProjectMemberPicker } from "./ProjectMemberPicker";
 
-type AddProjectFormProps = {
+type EditProjectFormProps = {
+  projectId: Id<"projects">;
+  initialField: HackathonField;
+  initialTitle: string;
+  initialBlurb: string;
+  initialLiveUrl?: string;
+  initialJoinCode?: string;
   onCancel: () => void;
-  onCreated: () => void;
+  onSaved: () => void;
   variant?: "dark" | "light";
 };
 
@@ -37,13 +43,24 @@ function FieldLabel({
 
 const fieldOptions = Object.keys(HACKATHON_FIELDS) as HackathonField[];
 
-export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddProjectFormProps) {
-  const createProject = useMutation(api.projects.create);
+export function EditProjectForm({
+  projectId,
+  initialField,
+  initialTitle,
+  initialBlurb,
+  initialLiveUrl = "",
+  initialJoinCode = "",
+  onCancel,
+  onSaved,
+  variant = "dark",
+}: EditProjectFormProps) {
+  const updateProject = useMutation(api.projects.update);
 
-  const [field, setField] = useState<HackathonField>("Civic");
-  const [title, setTitle] = useState("");
-  const [blurb, setBlurb] = useState("");
-  const [liveUrl, setLiveUrl] = useState("");
+  const [field, setField] = useState<HackathonField>(initialField);
+  const [title, setTitle] = useState(initialTitle);
+  const [blurb, setBlurb] = useState(initialBlurb);
+  const [liveUrl, setLiveUrl] = useState(initialLiveUrl);
+  const [copiedJoinCode, setCopiedJoinCode] = useState(false);
   const [inviteUserIds, setInviteUserIds] = useState<Id<"users">[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -86,16 +103,17 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
     setError("");
 
     try {
-      await createProject({
+      await updateProject({
+        projectId,
         field,
         title: trimmedTitle,
         blurb: trimmedBlurb,
-        liveUrl: liveUrl.trim() || undefined,
-        inviteUserIds,
+        liveUrl: liveUrl.trim(),
+        inviteUserIds: inviteUserIds.length > 0 ? inviteUserIds : undefined,
       });
-      onCreated();
+      onSaved();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create project.");
+      setError(err instanceof Error ? err.message : "Failed to update project.");
     } finally {
       setSaving(false);
     }
@@ -104,11 +122,11 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-5">
       <div>
-        <FieldLabel htmlFor="project-title" variant={variant}>
+        <FieldLabel htmlFor="edit-project-title" variant={variant}>
           Title
         </FieldLabel>
         <input
-          id="project-title"
+          id="edit-project-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -120,11 +138,11 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
       </div>
 
       <div>
-        <FieldLabel htmlFor="project-field" variant={variant}>
+        <FieldLabel htmlFor="edit-project-field" variant={variant}>
           Field
         </FieldLabel>
         <select
-          id="project-field"
+          id="edit-project-field"
           value={field}
           onChange={(e) => setField(e.target.value as HackathonField)}
           className={inputClassName}
@@ -142,11 +160,11 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
       </div>
 
       <div>
-        <FieldLabel htmlFor="project-blurb" variant={variant}>
+        <FieldLabel htmlFor="edit-project-blurb" variant={variant}>
           Description
         </FieldLabel>
         <textarea
-          id="project-blurb"
+          id="edit-project-blurb"
           value={blurb}
           onChange={(e) => setBlurb(e.target.value)}
           className={textareaClassName}
@@ -157,11 +175,11 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
       </div>
 
       <div>
-        <FieldLabel htmlFor="project-live-url" variant={variant}>
+        <FieldLabel htmlFor="edit-project-live-url" variant={variant}>
           Live URL
         </FieldLabel>
         <input
-          id="project-live-url"
+          id="edit-project-live-url"
           type="url"
           value={liveUrl}
           onChange={(e) => setLiveUrl(e.target.value)}
@@ -170,9 +188,37 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
         />
       </div>
 
+      {initialJoinCode ? (
+        <div>
+          <FieldLabel htmlFor="edit-project-join-code" variant={variant}>
+            Join code
+          </FieldLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              id="edit-project-join-code"
+              type="text"
+              value={initialJoinCode}
+              readOnly
+              className={`${inputClassName} uppercase tracking-widest`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(initialJoinCode);
+                setCopiedJoinCode(true);
+                setTimeout(() => setCopiedJoinCode(false), 2000);
+              }}
+              className={secondaryButtonClass}
+            >
+              {copiedJoinCode ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div>
-        <FieldLabel htmlFor="project-members" variant={variant}>
-          Invite builders
+        <FieldLabel htmlFor="edit-project-members" variant={variant}>
+          Invite more builders
         </FieldLabel>
         <ProjectMemberPicker selectedIds={inviteUserIds} onChange={setInviteUserIds} variant={variant} />
       </div>
@@ -188,7 +234,7 @@ export function AddProjectForm({ onCancel, onCreated, variant = "dark" }: AddPro
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" disabled={saving} className={primaryButtonClass}>
-          {saving ? "Creating…" : "Create project"}
+          {saving ? "Saving…" : "Save changes"}
         </button>
         <button type="button" onClick={onCancel} disabled={saving} className={secondaryButtonClass}>
           Cancel

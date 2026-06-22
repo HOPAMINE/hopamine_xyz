@@ -30,7 +30,7 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
         >
           {project ? (
             <>
-              <div className="px-5 pt-4 sm:px-6 sm:pt-5">
+              <div className="px-5 pt-4 pb-4 sm:px-6 sm:pt-5 sm:pb-5">
                 <Dialog.Close asChild>
                   <button
                     type="button"
@@ -95,7 +95,7 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                   {project.blurb}
                 </p>
 
-                <div className="mt-auto pt-6 text-right">
+                <div className="mt-auto pt-6 text-left">
                   <p
                     className={`${robotoMono.className} text-xs font-semibold uppercase tracking-wide text-white/80 sm:text-sm`}
                   >
