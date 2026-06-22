@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as badges from "../badges.js";
 import type * as hackathonClaims from "../hackathonClaims.js";
 import type * as hackathonParticipations from "../hackathonParticipations.js";
 import type * as lib_hackathonProjectCount from "../lib/hackathonProjectCount.js";
@@ -22,6 +23,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  badges: typeof badges;
   hackathonClaims: typeof hackathonClaims;
   hackathonParticipations: typeof hackathonParticipations;
   "lib/hackathonProjectCount": typeof lib_hackathonProjectCount;

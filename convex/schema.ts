@@ -27,6 +27,7 @@ export default defineSchema({
     skills: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
+    learning: v.optional(v.string()),
     availability: v.optional(v.array(availabilitySlot)),
     nowPlaying: v.optional(v.string()),
     lastSeenAt: v.optional(v.number()),
@@ -37,7 +38,8 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_username", ["username"]),
+    .index("by_username", ["username"])
+    .index("by_onboarding_completed_at", ["onboardingCompletedAt"]),
 
   projects: defineTable({
     userId: v.id("users"),

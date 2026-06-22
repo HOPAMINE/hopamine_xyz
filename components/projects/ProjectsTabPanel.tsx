@@ -66,6 +66,7 @@ export function ProjectsTabPanel({ builderName }: ProjectsTabPanelProps) {
               blurb={project.blurb}
               onOpen={() => setSelectedProjectId(project._id)}
               showLinkPills={false}
+              variant="dashboard"
             />
           ))}
           <AddProjectCard onClick={() => setIsAdding(true)} />

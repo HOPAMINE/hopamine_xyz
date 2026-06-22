@@ -23,7 +23,6 @@ export function isGreenNavRoute(pathname: string): boolean {
   return (
     isEventsRoute(pathname) ||
     isProjectsRoute(pathname) ||
-    pathname === "/dashboard" ||
     pathname.startsWith("/profile/")
   );
 }

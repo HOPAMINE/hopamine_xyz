@@ -3,13 +3,12 @@
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { api } from "../../../convex/_generated/api";
 import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
 import { robotoFlex, robotoMono } from "../../../fonts";
-import { AddProjectCard } from "../../../components/projects/AddProjectCard";
 import { ProjectsTabPanel } from "../../../components/projects/ProjectsTabPanel";
-import { ProfilePanel } from "../../../components/profile/ProfilePanel";
+import { ProfileTabContent } from "./ProfileTab";
 
 const ACCOUNT_TABS = [
   { id: "profile", label: "Profile" },
@@ -18,9 +17,9 @@ const ACCOUNT_TABS = [
 
 type AccountTabId = (typeof ACCOUNT_TABS)[number]["id"];
 
-const pillBase = `${robotoMono.className} inline-flex shrink-0 touch-manipulation items-center rounded-full border border-white/35 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3.5 sm:py-2 sm:text-[11px]`;
+const pillBase = `${robotoMono.className} inline-flex shrink-0 touch-manipulation items-center rounded-full border border-white/35 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 sm:py-1 sm:text-[10px]`;
 
-const actionPillClass = `${pillBase} bg-accent-events text-white hover:bg-white hover:text-accent-events`;
+const actionPillClass = `${pillBase} bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar`;
 
 function AccountTabPills({
   activeTab,
@@ -32,7 +31,7 @@ function AccountTabPills({
   trailingAction?: React.ReactNode;
 }) {
   return (
-    <div className="mt-6 flex w-full flex-nowrap items-center justify-start gap-1.5 overflow-x-auto pb-1 lg:overflow-visible">
+    <div className="mt-0 flex w-full flex-nowrap items-center justify-start gap-1.5 overflow-x-auto lg:overflow-visible">
       {ACCOUNT_TABS.map((tab) => {
         const isSelected = activeTab === tab.id;
         return (
@@ -43,8 +42,8 @@ function AccountTabPills({
             onClick={() => onSelect(tab.id)}
             className={
               isSelected
-                ? `${pillBase} bg-white text-accent-events`
-                : `${pillBase} bg-accent-events text-white hover:bg-white hover:text-accent-events`
+                ? `${pillBase} bg-white text-accent-navbar`
+                : `${pillBase} bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar`
             }
           >
             {tab.label}
@@ -60,15 +59,12 @@ function ProjectsTabContent({ builderName }: { builderName: string }) {
   return <ProjectsTabPanel builderName={builderName} />;
 }
 
-const editProfileButtonClass = actionPillClass;
-
 function ProfilePageContent() {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
   const searchParams = useSearchParams();
   const convexProfile = useQuery(api.users.getCurrentUser, {});
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   const activeTab = (searchParams.get("tab") as AccountTabId) ?? "profile";
   const safeTab: AccountTabId = ACCOUNT_TABS.some((tab) => tab.id === activeTab) ? activeTab : "profile";
@@ -87,12 +83,6 @@ function ProfilePageContent() {
     router.replace(query ? `/dashboard?${query}` : "/dashboard");
   }
 
-  useEffect(() => {
-    if (safeTab !== "profile") {
-      setIsEditingProfile(false);
-    }
-  }, [safeTab]);
-
   const heading = safeTab === "projects" ? "Projects" : "Profile";
   const subtitle =
     safeTab === "projects"
@@ -102,9 +92,9 @@ function ProfilePageContent() {
   if (!clerkLoaded || convexLoading) {
     return (
       <main
-        className={`relative min-h-dvh w-full bg-accent-events pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
+        className={`relative min-h-dvh w-full bg-accent-navbar pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
       >
-        <div className="mx-auto w-full max-w-7xl">
+        <div className="mx-auto pt-10px w-full max-w-7xl">
           <p className={`${robotoMono.className} text-sm text-white/75`}>Loading…</p>
         </div>
       </main>
@@ -113,44 +103,37 @@ function ProfilePageContent() {
 
   return (
     <main
-      className={`relative min-h-dvh w-full bg-accent-events pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
+      className={`min-h-dvh w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-[112px] pb-10 md:pt-[116px] md:pb-12 ${NAV_ALIGN_PAD}`}
     >
       <div className="mx-auto w-full max-w-7xl">
         <header className="max-w-3xl">
-            <h1
-              className={`${robotoFlex.className} text-3xl font-semibold tracking-[-0.02em] sm:text-4xl md:text-5xl`}
-            >
-              {heading}
-            </h1>
-            <p className={`${robotoFlex.className} mt-3 text-base text-white/90 sm:text-lg`}>{subtitle}</p>
+            {safeTab === "projects" && (
+              <>
+                <h1
+                  className={`${robotoFlex.className} text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl md:text-5xl`}
+                >
+                  {heading}
+                </h1>
+                <p className={`${robotoFlex.className} mt-3 text-base text-white/90 sm:text-lg`}>{subtitle}</p>
+              </>
+            )}
             <AccountTabPills
               activeTab={safeTab}
               onSelect={setTab}
               trailingAction={
-                <>
-                  {safeTab === "profile" && convexUser && !isEditingProfile ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingProfile(true)}
-                      className={editProfileButtonClass}
-                    >
-                      Edit profile
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => signOut({ redirectUrl: "/" })}
-                    className={actionPillClass}
-                  >
-                    Logout
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => signOut({ redirectUrl: "/" })}
+                  className={actionPillClass}
+                >
+                  Logout
+                </button>
               }
             />
         </header>
 
         <section
-          className={`mt-8 ${safeTab === "projects" ? "w-full" : "max-w-2xl"}`}
+          className="mt-6 w-full"
           aria-labelledby="account-tab-content"
         >
           <h2 id="account-tab-content" className="sr-only">
@@ -163,12 +146,7 @@ function ProfilePageContent() {
               No profile found yet. Navigate the app while signed in — it syncs automatically.
             </p>
           ) : (
-            <ProfilePanel
-              user={convexUser}
-              fallbackAvatarUrl={user?.imageUrl}
-              isEditing={isEditingProfile}
-              onEditingChange={setIsEditingProfile}
-            />
+            <ProfileTabContent user={convexUser} />
           )}
         </section>
       </div>
@@ -176,7 +154,7 @@ function ProfilePageContent() {
   );
 }
 
-export default function ProfilePage() {
+export default function DashboardPage() {
   return (
     <Suspense>
       <ProfilePageContent />

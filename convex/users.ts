@@ -104,9 +104,11 @@ export const updateProfile = mutation({
     storageId: v.optional(v.id("_storage")),
     location: v.optional(v.string()),
     archetypes: v.optional(v.array(v.string())),
-    skills: v.optional(v.union(v.string(), v.array(v.string()))),
+    skills: v.optional(v.array(v.string())),
     vision: v.optional(v.string()),
     why: v.optional(v.string()),
+    learning: v.optional(v.string()),
+    discord: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -197,6 +199,21 @@ export const updateProfile = mutation({
       updates.why = trimText(args.why) || undefined;
     }
 
+    if (args.learning !== undefined) {
+      updates.learning = trimText(args.learning) || undefined;
+    }
+    if (args.discord !== undefined) {
+      const discord = args.discord.trim().replace(/^@/, "");
+      if (discord && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(discord)) {
+        throw new Error("Invalid Discord username");
+      }
+      const existing = user.socialLinks ?? {};
+      updates.socialLinks = discord ? { ...existing, discord } : (() => {
+        const { discord: _removed, ...rest } = existing;
+        return Object.keys(rest).length > 0 ? rest : undefined;
+      })();
+    }
+
     await ctx.db.patch(user._id, updates);
 
     return { success: true };
@@ -251,9 +268,11 @@ export const completeOnboarding = mutation({
     name: v.string(),
     location: v.string(),
     archetypes: v.array(v.string()),
-    skills: v.string(),
+    skills: v.array(v.string()),
     vision: v.string(),
     why: v.string(),
+    learning: v.optional(v.string()),
+    discord: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -269,6 +288,12 @@ export const completeOnboarding = mutation({
     // Idempotent — don't overwrite answers if already completed
     if (user.onboardingCompletedAt) return { success: true, alreadyCompleted: true };
 
+    const discord = (args.discord?.trim() ?? "").replace(/^@/, "");
+    if (discord && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(discord)) {
+      throw new Error("Invalid Discord username");
+    }
+    const socialLinks = discord ? { discord } : undefined;
+
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
       location: args.location.trim(),
@@ -276,6 +301,8 @@ export const completeOnboarding = mutation({
       skills: normalizeSkills(args.skills),
       vision: args.vision.trim(),
       why: args.why.trim(),
+      learning: args.learning?.trim() || undefined,
+      ...(socialLinks !== undefined ? { socialLinks } : {}),
       onboardingCompletedAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -307,10 +334,100 @@ export const deleteAccount = mutation({
   },
 });
 
+export const updateLastSeen = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) return;
+    await ctx.db.patch(user._id, { lastSeenAt: Date.now() });
+  },
+});
+
+export const updateAvailability = mutation({
+  args: {
+    availability: v.array(v.object({ day: v.number(), period: v.number() })),
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { availability: args.availability, timezone: args.timezone });
+  },
+});
+
+export const updateNowPlaying = mutation({
+  args: { nowPlaying: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { nowPlaying: args.nowPlaying });
+  },
+});
+
+export const listBuilders = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_onboarding_completed_at", (q) => q.gt("onboardingCompletedAt", 0))
+      .take(100);
+    users.sort((a, b) => b.createdAt - a.createdAt);
+    return users.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      username: u.username,
+      avatarUrl: u.avatarUrl,
+      location: u.location,
+      archetypes: u.archetypes,
+      skills: u.skills,
+      lastSeenAt: u.lastSeenAt,
+      socialLinks: u.socialLinks,
+    }));
+  },
+});
+
 export const generateImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+// One-time migration: convert legacy string skills to string[].
+// Run once via the Convex dashboard or `npx convex run users:migrateSkillsToArray`.
+export const migrateSkillsToArray = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let migrated = 0;
+    for (const user of users) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof (user.skills as any) === "string") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const skills = (user.skills as any as string)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+        await ctx.db.patch(user._id, { skills });
+        migrated++;
+      }
+    }
+    return { migrated };
   },
 });
 

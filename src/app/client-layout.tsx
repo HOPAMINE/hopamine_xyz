@@ -13,7 +13,7 @@ import { Providers } from "./providers";
 const convexConfigured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /** Routes that are exempt from the onboarding gate. */
-const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/hopathon", "/claim"];
+const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", "/profile-compare", "/hopathon", "/claim"];
 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
@@ -48,6 +48,18 @@ function UserSyncInner() {
     if (ONBOARDING_EXEMPT.some((p) => pathname.startsWith(p))) return;
     router.replace("/onboard");
   }, [existing, pathname, router]);
+
+  const updateLastSeen = useMutation(api.users.updateLastSeen);
+
+  useEffect(() => {
+    if (!existing) return;
+    const fire = () => {
+      if (document.visibilityState === "visible") void updateLastSeen();
+    };
+    fire();
+    const id = setInterval(fire, 30_000);
+    return () => clearInterval(id);
+  }, [existing, updateLastSeen]);
 
   return null;
 }

@@ -5,7 +5,7 @@ import { robotoFlex } from "../../fonts";
 
 const DISCORD_URL = "https://discord.gg/ESymdPMhCD";
 const INSTAGRAM_URL = "https://instagram.com/mawuli.xyz";
-const HERO_BG = "#03A4EA";
+const HERO_BG = "#00A6F3";
 
 function DiscordIcon({ className }: { className?: string }) {
   return (
