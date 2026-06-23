@@ -806,8 +806,7 @@ export const showClaimedHackathonProjectOnDashboard = mutation({
 });
 
 const onboardingBackfillEntryValidator = v.object({
-  matchName: v.string(),
-  matchLocation: v.string(),
+  userId: v.id("users"),
   name: v.string(),
   location: v.string(),
   bio: v.optional(v.string()),
@@ -825,40 +824,26 @@ export const backfillFailedOnboarding = internalMutation({
   },
   returns: v.array(
     v.object({
-      matchName: v.string(),
+      userId: v.id("users"),
       status: v.union(v.literal("applied"), v.literal("skipped"), v.literal("not_found")),
-      userId: v.optional(v.id("users")),
     }),
   ),
   handler: async (ctx, args) => {
     const results: Array<{
-      matchName: string;
+      userId: Id<"users">;
       status: "applied" | "skipped" | "not_found";
-      userId?: Id<"users">;
     }> = [];
 
     for (const entry of args.entries) {
-      const candidates = await ctx.db.query("users").collect();
-      const incomplete = candidates.filter((candidate) => !candidate.onboardingCompletedAt);
-      const user =
-        incomplete.find(
-          (candidate) =>
-            candidate.name.trim().toLowerCase() === entry.matchName.trim().toLowerCase() &&
-            (candidate.location?.trim().toLowerCase() ?? "") ===
-              entry.matchLocation.trim().toLowerCase(),
-        ) ??
-        incomplete.find(
-          (candidate) =>
-            candidate.name.trim().toLowerCase() === entry.matchName.trim().toLowerCase(),
-        );
+      const user = await ctx.db.get("users", entry.userId);
 
       if (!user) {
-        results.push({ matchName: entry.matchName, status: "not_found" });
+        results.push({ userId: entry.userId, status: "not_found" });
         continue;
       }
 
       if (user.onboardingCompletedAt) {
-        results.push({ matchName: entry.matchName, status: "skipped", userId: user._id });
+        results.push({ userId: entry.userId, status: "skipped" });
         continue;
       }
 
@@ -866,7 +851,7 @@ export const backfillFailedOnboarding = internalMutation({
       const socialLinks = discord ? { discord } : undefined;
       const username = await resolveUsernameForUser(ctx, user, undefined);
 
-      await ctx.db.patch(user._id, {
+      await ctx.db.patch(entry.userId, {
         name: entry.name.trim(),
         username,
         location: entry.location.trim(),
@@ -880,7 +865,7 @@ export const backfillFailedOnboarding = internalMutation({
         updatedAt: Date.now(),
       });
 
-      results.push({ matchName: entry.matchName, status: "applied", userId: user._id });
+      results.push({ userId: entry.userId, status: "applied" });
     }
 
     return results;

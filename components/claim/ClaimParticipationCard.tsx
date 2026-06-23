@@ -19,6 +19,7 @@ import {
   PARTICIPATION_CARD_HERO_WIDTH,
   PARTICIPATION_CARD_QR_SIZE,
   PARTICIPATION_CARD_WIDTH,
+  getParticipationCardNameFontSize,
 } from "./participationCardStyles";
 
 export type ClaimParticipationCardProps = {
@@ -49,6 +50,7 @@ export const ClaimParticipationCard = forwardRef<HTMLElement, ClaimParticipation
     ref,
   ) {
     const displayName = name.split(" ")[0] ?? name;
+    const nameFontSize = getParticipationCardNameFontSize(displayName);
     const displayProjectTitle = projectTitle
       ? formatProjectTitle(projectTitle)
       : "Your project";
@@ -95,7 +97,8 @@ export const ClaimParticipationCard = forwardRef<HTMLElement, ClaimParticipation
           <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
             <div>
               <h2
-                className={`${sortsMillGoudy.className} text-[3.24rem] normal-case mt-2 leading-[0.9] tracking-[-0.05em] text-white`}
+                className={`${sortsMillGoudy.className} normal-case mt-2 leading-[0.9] tracking-[-0.05em] text-white`}
+                style={{ fontSize: nameFontSize }}
               >
                 {displayName}
               </h2>

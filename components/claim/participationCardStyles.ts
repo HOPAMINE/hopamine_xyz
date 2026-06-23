@@ -21,6 +21,19 @@ export const PARTICIPATION_CARD_FOOTER_MIN_HEIGHT = 260;
 /** QR code render size in the card footer. */
 export const PARTICIPATION_CARD_QR_SIZE = 120;
 
+/** Name size on the card footer — full size at 6 chars, scales down for longer names. */
+export const PARTICIPATION_CARD_NAME_FONT_SIZE_BASE = "3.24rem";
+
+export function getParticipationCardNameFontSize(name: string): string {
+  const length = name.trim().length;
+  if (length <= 6) return PARTICIPATION_CARD_NAME_FONT_SIZE_BASE;
+  if (length <= 8) return "2.85rem";
+  if (length <= 10) return "2.45rem";
+  if (length <= 12) return "2.1rem";
+  if (length <= 14) return "1.8rem";
+  return "1.55rem";
+}
+
 /** Matches card `rounded-[1.875rem]`. */
 export const PARTICIPATION_CARD_BORDER_RADIUS = 30;
 
