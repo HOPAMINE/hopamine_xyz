@@ -6,6 +6,7 @@ import type { ProjectField } from "./projectFields";
 export type GreenHackathonBadgeDisplay = {
   kind: "green-hackathon-builder";
   id: string;
+  userId: Id<"users">;
   name: string;
   builderNumber: number;
   username?: string;
@@ -182,6 +183,7 @@ export async function buildGreenHackathonBadgeFromParticipation(
   return {
     kind: "green-hackathon-builder",
     id: `green-hackathon-builder-${participation._id}`,
+    userId: user._id,
     name: user.name,
     builderNumber: participation.builderNumber,
     username: user.username,

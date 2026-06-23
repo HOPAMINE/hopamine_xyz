@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { projectFieldValidator, type ProjectField } from "./lib/projectFields";
 import {
   backfillGreenHackathonBadge,
@@ -11,6 +11,7 @@ import {
 const greenHackathonBadgeValidator = v.object({
   kind: v.literal("green-hackathon-builder"),
   id: v.string(),
+  userId: v.id("users"),
   name: v.string(),
   builderNumber: v.number(),
   username: v.optional(v.string()),
@@ -26,6 +27,7 @@ const badgeValidator = v.union(greenHackathonBadgeValidator);
 type Badge = {
   kind: "green-hackathon-builder";
   id: string;
+  userId: Id<"users">;
   name: string;
   builderNumber: number;
   username?: string;
@@ -56,6 +58,7 @@ async function badgeDocToApi(
   return {
     kind: "green-hackathon-builder",
     id: badge._id,
+    userId: user._id,
     name: user.name,
     builderNumber: participation?.builderNumber ?? 0,
     username: user.username,

@@ -1,6 +1,14 @@
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
+import { generateUniqueUsername, resolveUsernameForUser } from "./lib/usernames";
 
 function trimText(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -272,14 +280,19 @@ export const updateProfilePicture = mutation({
 export const completeOnboarding = mutation({
   args: {
     name: v.string(),
+    username: v.optional(v.string()),
     location: v.string(),
-    bio: v.string(),
     skills: v.array(v.string()),
     vision: v.string(),
     why: v.string(),
     learning: v.optional(v.string()),
     discord: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    alreadyCompleted: v.boolean(),
+    username: v.optional(v.string()),
+  }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -291,8 +304,22 @@ export const completeOnboarding = mutation({
 
     if (!user) throw new Error("User not found");
 
+    const username = await resolveUsernameForUser(ctx, user, args.username);
+
     // Idempotent — don't overwrite answers if already completed
-    if (user.onboardingCompletedAt) return { success: true, alreadyCompleted: true };
+    if (user.onboardingCompletedAt) {
+      if (!user.username?.trim()) {
+        await ctx.db.patch(user._id, {
+          username,
+          updatedAt: Date.now(),
+        });
+      }
+      return {
+        success: true,
+        alreadyCompleted: true,
+        username: user.username?.trim() ? user.username : username,
+      };
+    }
 
     const discord = (args.discord?.trim() ?? "").replace(/^@/, "");
     if (discord && !/^[a-zA-Z0-9_.]{2,32}(#\d{4})?$/.test(discord)) {
@@ -302,8 +329,8 @@ export const completeOnboarding = mutation({
 
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
+      username,
       location: args.location.trim(),
-      bio: args.bio.trim(),
       skills: normalizeSkills(args.skills),
       vision: args.vision.trim(),
       why: args.why.trim(),
@@ -313,7 +340,112 @@ export const completeOnboarding = mutation({
       updatedAt: Date.now(),
     });
 
-    return { success: true, alreadyCompleted: false };
+    return { success: true, alreadyCompleted: false, username };
+  },
+});
+
+/** Assigns a unique Hopamine username when the user does not have one yet. */
+export const ensureUsername = mutation({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.username?.trim()) {
+      return user.username;
+    }
+
+    const username = await generateUniqueUsername(ctx, {
+      name: user.name,
+      email: user.email,
+      userId: user._id,
+    });
+
+    await ctx.db.patch(user._id, {
+      username,
+      updatedAt: Date.now(),
+    });
+
+    return username;
+  },
+});
+
+/** Lists users who still need an auto-generated username. */
+export const listUserIdsMissingUsername = internalQuery({
+  args: {},
+  returns: v.array(v.id("users")),
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.filter((user) => !user.username?.trim()).map((user) => user._id);
+  },
+});
+
+/** Assigns a generated username to one user (safe for concurrent lastSeen updates). */
+export const assignGeneratedUsernameForUser = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) {
+      return null;
+    }
+
+    if (user.username?.trim()) {
+      return user.username;
+    }
+
+    const username = await generateUniqueUsername(ctx, {
+      name: user.name,
+      email: user.email,
+      userId: user._id,
+    });
+
+    await ctx.db.patch(user._id, {
+      username,
+      updatedAt: Date.now(),
+    });
+
+    return username;
+  },
+});
+
+/** Backfills usernames one user at a time to avoid OCC conflicts with updateLastSeen. */
+export const backfillMissingUsernames = internalAction({
+  args: {},
+  returns: v.object({
+    updated: v.number(),
+    attempted: v.number(),
+  }),
+  handler: async (ctx) => {
+    const userIds: Id<"users">[] = await ctx.runQuery(
+      internal.users.listUserIdsMissingUsername,
+      {},
+    );
+
+    let updated = 0;
+    for (const userId of userIds) {
+      const username: string | null = await ctx.runMutation(
+        internal.users.assignGeneratedUsernameForUser,
+        { userId },
+      );
+      if (username) {
+        updated += 1;
+      }
+    }
+
+    return { updated, attempted: userIds.length };
   },
 });
 

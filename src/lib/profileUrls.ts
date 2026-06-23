@@ -13,3 +13,14 @@ export function getPublicProfilePath(user: { username?: string; _id: string }): 
 export function getPublicProfileUrl(origin: string, username: string): string {
   return `${origin}/profile/${encodeURIComponent(normalizeUsername(username))}`;
 }
+
+export function getPublicProfileUrlForUser(
+  origin: string,
+  user: { username?: string; _id: string },
+): string {
+  const username = user.username?.trim();
+  if (username) {
+    return getPublicProfileUrl(origin, username);
+  }
+  return `${origin}${getPublicProfilePath(user)}`;
+}

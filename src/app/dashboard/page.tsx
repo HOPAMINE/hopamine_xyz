@@ -29,7 +29,7 @@ function ProfilePageContent() {
 
   return (
     <main
-      className={`min-h-dvh w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-[112px] pb-10 md:pt-[116px] md:pb-12 ${NAV_ALIGN_PAD}`}
+      className={`min-h-dvh w-full bg-[linear-gradient(to_bottom_right,#00a6f3_0%,#00a6f3_35%,#cdeefc_62%,#f5fafc_82%,#fefefe_100%)] pt-[104px] pb-[max(2.5rem,env(safe-area-inset-bottom))] md:pt-[116px] md:pb-12 ${NAV_ALIGN_PAD}`}
     >
       <div className="mx-auto w-full">
         <section className="w-full" aria-label="Profile">

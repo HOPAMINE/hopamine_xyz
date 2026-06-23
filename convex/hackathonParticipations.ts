@@ -1,6 +1,13 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { createGreenHackathonBuilderBadge } from "./lib/badgeRecords";
+import { allocateNextBuilderNumber } from "./lib/builderNumbers";
 
 const participationValidator = v.object({
   _id: v.id("hackathonParticipations"),
@@ -68,8 +75,7 @@ export const claim = mutation({
       throw new Error("You have already claimed your hackathon participation");
     }
 
-    const participationCount = (await ctx.db.query("hackathonParticipations").collect()).length;
-    const builderNumber = participationCount + 1;
+    const builderNumber = await allocateNextBuilderNumber(ctx);
     const claimedAt = Date.now();
 
     const participationId = await ctx.db.insert("hackathonParticipations", {
@@ -85,5 +91,55 @@ export const claim = mutation({
     });
 
     return participationId;
+  },
+});
+
+/** Reassigns duplicate builder numbers so each participation keeps a unique slot. */
+export const dedupeBuilderNumbers = internalMutation({
+  args: {},
+  returns: v.object({
+    reassigned: v.number(),
+    details: v.array(
+      v.object({
+        participationId: v.id("hackathonParticipations"),
+        userId: v.id("users"),
+        from: v.number(),
+        to: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx) => {
+    const participations = await ctx.db.query("hackathonParticipations").collect();
+    participations.sort((a, b) => a.claimedAt - b.claimedAt);
+
+    const seen = new Set<number>();
+    let nextNumber =
+      participations.reduce((max, participation) => Math.max(max, participation.builderNumber), 0) +
+      1;
+    const details: Array<{
+      participationId: (typeof participations)[number]["_id"];
+      userId: (typeof participations)[number]["userId"];
+      from: number;
+      to: number;
+    }> = [];
+
+    for (const participation of participations) {
+      if (!seen.has(participation.builderNumber)) {
+        seen.add(participation.builderNumber);
+        continue;
+      }
+
+      await ctx.db.patch(participation._id, { builderNumber: nextNumber });
+      details.push({
+        participationId: participation._id,
+        userId: participation.userId,
+        from: participation.builderNumber,
+        to: nextNumber,
+      });
+      seen.add(nextNumber);
+      nextNumber += 1;
+    }
+
+    return { reassigned: details.length, details };
   },
 });

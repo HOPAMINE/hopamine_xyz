@@ -20,6 +20,7 @@ const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", 
 function UserSyncInner() {
   const { user, isLoaded: isUserLoaded } = useUser();
   const getOrCreateUser = useMutation(api.users.getOrCreate);
+  const ensureUsername = useMutation(api.users.ensureUsername);
   const existing = useQuery(
     api.users.getCurrentUser,
     isUserLoaded && user ? {} : "skip",
@@ -41,6 +42,14 @@ function UserSyncInner() {
       console.error("[UserSync] getOrCreate failed:", err);
     });
   }, [user, isUserLoaded, getOrCreateUser, existing]);
+
+  // Assign a Hopamine username when missing (e.g. legacy accounts or skipped onboarding step)
+  useEffect(() => {
+    if (!existing || existing.username?.trim()) return;
+    void ensureUsername().catch((err: unknown) => {
+      console.error("[UserSync] ensureUsername failed:", err);
+    });
+  }, [existing, ensureUsername]);
 
   // Redirect to onboarding if the user hasn't completed it yet
   useEffect(() => {

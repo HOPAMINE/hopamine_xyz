@@ -80,14 +80,12 @@ function OnboardPageContent() {
   const [name, setName] = useState("")
   const [nameDone, setNameDone] = useState(false)
 
+  const [username, setUsername] = useState("")
+  const [usernameError, setUsernameError] = useState("")
+  const [usernameDone, setUsernameDone] = useState(false)
+
   const [location, setLocation] = useState("")
   const [locationDone, setLocationDone] = useState(false)
-
-  const [bioDraft, setBioDraft] = useState("")
-  const [bio, setBio] = useState("")
-  const [bioDone, setBioDone] = useState(false)
-  const [editingBio, setEditingBio] = useState(false)
-  const [tempBio, setTempBio] = useState("")
 
   const [skillsList, setSkillsList] = useState<string[]>(["", ""])
   const [skillsDone, setSkillsDone] = useState(false)
@@ -137,23 +135,22 @@ function OnboardPageContent() {
     scrollDown()
   }
 
+  function submitUsername() {
+    const trimmed = username.trim().replace(/^@/, "").toLowerCase()
+    if (trimmed && !/^[a-z0-9_]{3,30}$/.test(trimmed)) {
+      setUsernameError("Use 3–30 lowercase letters, numbers, or underscores.")
+      return
+    }
+    setUsernameError("")
+    setUsername(trimmed)
+    setUsernameDone(true)
+    scrollDown()
+  }
+
   function submitLocation() {
     if (!location.trim()) return
     setLocationDone(true)
     scrollDown()
-  }
-
-  function submitBio() {
-    if (!bioDraft.trim()) return
-    setBio(bioDraft.trim())
-    setBioDone(true)
-    scrollDown()
-  }
-
-  function saveBio() {
-    if (!tempBio.trim()) return
-    setBio(tempBio.trim())
-    setEditingBio(false)
   }
 
   function submitSkills() {
@@ -222,8 +219,8 @@ function OnboardPageContent() {
     try {
       await completeOnboarding({
         name: name.trim(),
+        username: username.trim() || undefined,
         location: location.trim(),
-        bio,
         skills: skillsList.filter((s) => s.trim()),
         vision,
         why,
@@ -247,7 +244,6 @@ function OnboardPageContent() {
   // ── Derived display values ────────────────────────────────────────────────
 
   const displayVision = vision.length > 300 ? vision.slice(0, 300).trimEnd() + "…" : vision
-  const displayBio = bio.length > 200 ? bio.slice(0, 200).trimEnd() + "…" : bio
 
   // ── Shared button class helpers ───────────────────────────────────────────
 
@@ -406,9 +402,86 @@ function OnboardPageContent() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* Q2 — Location ──────────────────────────────────────────── */}
+              {/* Q2 — Username ─────────────────────────────────────────── */}
               <AnimatePresence>
                 {nameDone && (
+                  <motion.div
+                    key="q2-username"
+                    initial={{ opacity: 0, y: 22 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55, ease: "easeOut" }}
+                  >
+                    <AnimatePresence mode="wait">
+                      {!usernameDone ? (
+                        <motion.div key="q2u-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                          <p className={`${questionClass} mb-1`}>Pick your Hopamine username.</p>
+                          <p className="font-mono text-xs text-neutral-400 mb-5">
+                            Lowercase, no spaces. Skip and we&apos;ll generate one for you.
+                          </p>
+                          <input
+                            autoFocus
+                            type="text"
+                            value={username}
+                            onChange={(e) => {
+                              setUsername(e.target.value)
+                              setUsernameError("")
+                            }}
+                            onKeyDown={(e) => e.key === "Enter" && submitUsername()}
+                            placeholder="yourname"
+                            className={questionInputLineClass}
+                          />
+                          {usernameError ? (
+                            <p className="font-mono text-xs text-red-500 mb-3">{usernameError}</p>
+                          ) : null}
+                          <div className="flex items-center gap-3 mt-4">
+                            <button
+                              onClick={submitUsername}
+                              disabled={!username.trim()}
+                              className={outlineBtn(!!username.trim())}
+                            >
+                              Continue
+                            </button>
+                            <button
+                              onClick={() => {
+                                setUsername("")
+                                setUsernameError("")
+                                setUsernameDone(true)
+                                scrollDown()
+                              }}
+                              className={smallOutlineBtn}
+                            >
+                              Skip
+                            </button>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="q2u-done"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          onClick={() => setUsernameDone(false)}
+                          className="cursor-pointer hover:opacity-70 transition-opacity group"
+                        >
+                          <p className={questionAnswerClass}>
+                            Username:{" "}
+                            <span className="text-accent-navbar">
+                              {username.trim() ? `@${username.replace(/^@/, "")}` : "we'll generate one"}
+                            </span>
+                            <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">
+                              edit
+                            </span>
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Q3 — Location ──────────────────────────────────────────── */}
+              <AnimatePresence>
+                {usernameDone && (
                   <motion.div
                     key="q2"
                     initial={{ opacity: 0, y: 22 }}
@@ -458,78 +531,9 @@ function OnboardPageContent() {
                 )}
               </AnimatePresence>
 
-              {/* Q3 — Bio ─────────────────────────────────────────────── */}
-              <AnimatePresence>
-                {locationDone && (
-                  <motion.div
-                    key="q3"
-                    initial={{ opacity: 0, y: 22 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.55, ease: "easeOut" }}
-                  >
-                    <AnimatePresence mode="wait">
-                      {!bioDone ? (
-                        <motion.div key="q3-ask" exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                          <p className={`${questionClass} mb-5`}>Write a short bio.</p>
-                          <AutoTextarea
-                            value={bioDraft}
-                            onChange={setBioDraft}
-                            placeholder="A short intro about you…"
-                          />
-                          <div className="mt-4 flex items-center gap-4">
-                            <button
-                              onClick={submitBio}
-                              disabled={!bioDraft.trim()}
-                              className={outlineBtn(!!bioDraft.trim())}
-                            >
-                              Continue
-                            </button>
-                          </div>
-                        </motion.div>
-                      ) : editingBio ? (
-                        <motion.div key="q3-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <p className={`${questionClass} mb-5`}>Write a short bio.</p>
-                          <AutoTextarea value={tempBio} onChange={setTempBio} placeholder="A short intro about you…" />
-                          <div className="mt-4 flex items-center gap-4">
-                            <button onClick={saveBio} disabled={!tempBio.trim()} className={outlineBtn(!!tempBio.trim())}>
-                              Save
-                            </button>
-                            <button onClick={() => setEditingBio(false)} className={smallOutlineBtn}>
-                              Cancel
-                            </button>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="q3-done"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.5 }}
-                          onClick={() => {
-                            setTempBio(bio)
-                            setEditingBio(true)
-                          }}
-                          className="cursor-pointer hover:opacity-70 transition-opacity group"
-                        >
-                          <p className={`${questionAnswerClass} mb-3`}>
-                            Bio:
-                            <span className="ml-2 font-mono text-xs text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity align-middle">
-                              edit
-                            </span>
-                          </p>
-                          <p className={`${robotoFlex.className} text-3xl text-accent-navbar leading-snug`}>
-                            &ldquo;{displayBio}&rdquo;
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               {/* Q4 — Skills ────────────────────────────────────────────── */}
               <AnimatePresence>
-                {bioDone && (
+                {locationDone && (
                   <motion.div
                     key="q4"
                     initial={{ opacity: 0, y: 22 }}

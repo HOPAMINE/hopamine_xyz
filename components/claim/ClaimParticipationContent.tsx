@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "../../convex/_generated/api";
-import { getPublicProfileUrl } from "@/lib/profileUrls";
+import { getPublicProfileUrlForUser } from "@/lib/profileUrls";
 import { roboto, robotoMono } from "../../fonts";
 import { ClaimNavbar } from "./ClaimNavbar";
 import { ClaimParticipationCard } from "./ClaimParticipationCard";
@@ -88,11 +88,11 @@ export function ClaimParticipationContent() {
   }, [directoryProjects, projectClaim]);
 
   const defaultProfileUrl = useMemo(() => {
-    if (!siteOrigin || !convexUser?.username) return "";
-    return getPublicProfileUrl(siteOrigin, convexUser.username);
-  }, [convexUser?.username, siteOrigin]);
+    if (!siteOrigin || !convexUser) return "";
+    return getPublicProfileUrlForUser(siteOrigin, convexUser);
+  }, [convexUser, siteOrigin]);
 
-  const cardUserSeed = convexUser?.username ?? user?.id ?? "";
+  const cardUserSeed = convexUser?.username ?? convexUser?._id ?? user?.id ?? "";
   const cardProjectTitle = projectClaimed ? claimedProject?.title : selectedProject?.title;
   const cardProjectBlurb = projectClaimed ? claimedProject?.blurb : selectedProject?.blurb;
 

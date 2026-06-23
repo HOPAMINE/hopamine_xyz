@@ -9,7 +9,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { HACKATHON_FIELDS, getHackathonProjectByIndex, type HackathonField } from "@/lib/hackathonDirectory";
 import { primaryProjectLink } from "@/lib/projectUrls";
-import { getPublicProfileUrl } from "@/lib/profileUrls";
+import { getPublicProfileUrlForUser } from "@/lib/profileUrls";
 import { AddProjectCard } from "../../../components/projects/AddProjectCard";
 import { AddProjectForm } from "../../../components/projects/AddProjectForm";
 import { EditProjectForm } from "../../../components/projects/EditProjectForm";
@@ -539,7 +539,7 @@ function LeftProfilePanel({
   const initials = getInitials(user.name);
 
   return (
-    <aside className="bg-white rounded-[40px] px-6 py-5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] w-[387px] shrink-0 flex flex-col gap-4 overflow-hidden">
+    <aside className="flex w-full shrink-0 flex-col gap-4 overflow-hidden rounded-[28px] bg-white px-5 py-5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] lg:w-[387px] lg:rounded-[40px] lg:px-6">
       {/* Identity row: avatar + name + location */}
       <div className="flex items-end gap-[15px]">
         <div className="relative shrink-0" style={{ width: AV_SIZE, height: AV_SIZE }}>
@@ -830,15 +830,18 @@ function ScaledBadgeThumb({ children }: { children: React.ReactNode }) {
 function BadgeCard({ badge, siteOrigin }: { badge: MyBadge; siteOrigin: string }) {
   switch (badge.kind) {
     case "green-hackathon-builder": {
-      const profileUrl =
-        siteOrigin && badge.username
-          ? getPublicProfileUrl(siteOrigin, badge.username)
-          : undefined;
+      const profileUrl = siteOrigin
+        ? getPublicProfileUrlForUser(siteOrigin, {
+            _id: badge.userId,
+            username: badge.username,
+          })
+        : undefined;
+      const userSeed = badge.username ?? badge.userId;
       return (
         <ClaimParticipationCard
           name={badge.name}
           builderNumber={badge.builderNumber}
-          userSeed={badge.username}
+          userSeed={userSeed}
           projectTitle={badge.projectTitle}
           projectBlurb={badge.projectBlurb}
           profileUrl={profileUrl}
@@ -956,11 +959,11 @@ function RightPanel({
 
   return (
     <>
-      <section className="bg-white rounded-[40px] px-0 py-9 shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex-1 min-w-0 flex flex-col gap-10 overflow-y-auto">
+      <section className="flex min-w-0 flex-1 flex-col gap-8 overflow-y-auto rounded-[28px] bg-white px-0 py-7 shadow-[0_4px_20px_rgba(0,0,0,0.08)] lg:gap-10 lg:rounded-[40px] lg:py-9">
         {/* Projects */}
         <div className="min-w-0 py-1">
-          <div className={`flex items-center justify-between gap-4 pl-10 pr-10 ${readOnly ? "" : ""}`}>
-            <h2 className={`${robotoFlex.className} text-[32px] font-semibold leading-none tracking-[-0.02em] text-neutral-900`}>
+          <div className="flex flex-col gap-3 px-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 lg:px-10">
+            <h2 className={`${robotoFlex.className} text-[28px] font-semibold leading-none tracking-[-0.02em] text-neutral-900 lg:text-[32px]`}>
               <FloatingHeader>Projects</FloatingHeader>
             </h2>
             {!readOnly ? (
@@ -970,7 +973,7 @@ function RightPanel({
               />
             ) : null}
           </div>
-          <div className="min-w-0 px-10 pt-6 pb-4">
+          <div className="min-w-0 px-5 pt-5 pb-4 lg:px-10 lg:pt-6">
             {projectsLoading ? (
               <p className="font-mono text-[12px] text-neutral-500 py-6">Loading projects…</p>
             ) : displayProjects.length === 0 ? (
@@ -986,8 +989,8 @@ function RightPanel({
               </div>
               )
             ) : (
-              <div className="overflow-x-auto overflow-y-hidden pb-1">
-                <div className="flex w-max max-w-none flex-nowrap items-start gap-4">
+              <div className="pb-1 lg:overflow-x-auto lg:overflow-y-hidden">
+                <div className="flex flex-col gap-4 lg:w-max lg:max-w-none lg:flex-row lg:flex-nowrap lg:items-start">
                   {visibleProjects.map((item) => {
                     if (item.kind === "claimed") {
                       return (
@@ -1074,10 +1077,10 @@ function RightPanel({
 
         {/* Badges */}
         <div className="py-1">
-          <h2 className={`${robotoFlex.className} text-[32px] font-semibold leading-none tracking-[-0.02em] text-neutral-900 pl-10`}>
+          <h2 className={`${robotoFlex.className} text-[28px] font-semibold leading-none tracking-[-0.02em] text-neutral-900 px-5 lg:px-10 lg:text-[32px]`}>
             <FloatingHeader>Badges</FloatingHeader>
           </h2>
-          <div className="flex items-stretch gap-5 overflow-x-auto pt-6 pb-4 pl-10 pr-10">
+          <div className="flex flex-wrap items-stretch gap-4 px-5 pt-5 pb-4 sm:gap-5 lg:flex-nowrap lg:overflow-x-auto lg:px-10 lg:pt-6">
             {badges === undefined ? (
               <p className="font-mono text-[12px] text-neutral-500 py-6">Loading badges…</p>
             ) : badges.length === 0 ? (
@@ -1135,7 +1138,7 @@ export function ProfileTabContent({
   showFirstNameOnCard?: boolean;
 }) {
   return (
-    <div className="flex w-full items-stretch gap-2.5">
+    <div className="flex w-full flex-col items-stretch gap-4 lg:flex-row lg:gap-2.5">
       <LeftProfilePanel user={user} readOnly={readOnly} showFirstNameOnCard={showFirstNameOnCard} />
       <RightPanel builderName={user.name} userId={user._id} readOnly={readOnly} />
     </div>

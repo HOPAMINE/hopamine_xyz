@@ -16,12 +16,11 @@ export const projectsPageCardFootprintClassName =
   "w-full shrink-0 lg:w-[calc((min(100%,80rem)-2rem)/3)]";
 
 /**
- * Fixed footprint for dashboard project cards — always matches a single `lg`
- * column in the `/projects` grid inside `max-w-7xl`, independent of the narrower
- * profile right panel width.
+ * Fixed footprint for dashboard project cards — full width on mobile, and on `lg+`
+ * matches a single column in the `/projects` grid inside `max-w-7xl`.
  */
 export const dashboardProjectCardFootprintClassName =
-  "w-[calc((80rem-2rem)/3)] min-w-[calc((80rem-2rem)/3)] shrink-0";
+  "w-full shrink-0 lg:w-[calc((80rem-2rem)/3)] lg:min-w-[calc((80rem-2rem)/3)]";
 
 /** Scale factor used to shrink a reference card to the dashboard thumb width. */
 export const DASHBOARD_PROJECT_CARD_SCALE =
