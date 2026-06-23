@@ -19,6 +19,7 @@ const secondaryLinkClass = `${robotoMono.className} inline-flex items-center tex
 
 export function ClaimProjectContent() {
   const { user, isLoaded: clerkLoaded } = useUser();
+  const convexUser = useQuery(api.users.getCurrentUser, clerkLoaded && user ? {} : "skip");
   const myClaim = useQuery(api.hackathonClaims.getMyProject);
   const directoryProjects = useQuery(api.projects.listHackathonDirectory);
   const claimProject = useMutation(api.hackathonClaims.claimProject);
@@ -136,7 +137,12 @@ export function ClaimProjectContent() {
             <ClaimProjectCard
               project={claimedProject}
               claimed
-              claimantName={user.fullName ?? user.firstName ?? myClaim.builderName}
+              claimantName={
+                convexUser?.name?.trim() ||
+                user.fullName ||
+                user.firstName ||
+                myClaim.builderName
+              }
             />
           </div>
         </div>

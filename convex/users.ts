@@ -282,6 +282,7 @@ export const completeOnboarding = mutation({
     name: v.string(),
     username: v.optional(v.string()),
     location: v.string(),
+    bio: v.optional(v.string()),
     skills: v.array(v.string()),
     vision: v.string(),
     why: v.string(),
@@ -331,6 +332,7 @@ export const completeOnboarding = mutation({
       name: args.name.trim(),
       username,
       location: args.location.trim(),
+      bio: trimText(args.bio) || undefined,
       skills: normalizeSkills(args.skills),
       vision: args.vision.trim(),
       why: args.why.trim(),
@@ -800,5 +802,87 @@ export const showClaimedHackathonProjectOnDashboard = mutation({
     });
 
     return null;
+  },
+});
+
+const onboardingBackfillEntryValidator = v.object({
+  matchName: v.string(),
+  matchLocation: v.string(),
+  name: v.string(),
+  location: v.string(),
+  bio: v.optional(v.string()),
+  skills: v.array(v.string()),
+  vision: v.string(),
+  why: v.string(),
+  learning: v.optional(v.string()),
+  discord: v.optional(v.string()),
+});
+
+/** One-off recovery for onboarding submissions rejected before bio was in the validator. */
+export const backfillFailedOnboarding = internalMutation({
+  args: {
+    entries: v.array(onboardingBackfillEntryValidator),
+  },
+  returns: v.array(
+    v.object({
+      matchName: v.string(),
+      status: v.union(v.literal("applied"), v.literal("skipped"), v.literal("not_found")),
+      userId: v.optional(v.id("users")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const results: Array<{
+      matchName: string;
+      status: "applied" | "skipped" | "not_found";
+      userId?: Id<"users">;
+    }> = [];
+
+    for (const entry of args.entries) {
+      const candidates = await ctx.db.query("users").collect();
+      const incomplete = candidates.filter((candidate) => !candidate.onboardingCompletedAt);
+      const user =
+        incomplete.find(
+          (candidate) =>
+            candidate.name.trim().toLowerCase() === entry.matchName.trim().toLowerCase() &&
+            (candidate.location?.trim().toLowerCase() ?? "") ===
+              entry.matchLocation.trim().toLowerCase(),
+        ) ??
+        incomplete.find(
+          (candidate) =>
+            candidate.name.trim().toLowerCase() === entry.matchName.trim().toLowerCase(),
+        );
+
+      if (!user) {
+        results.push({ matchName: entry.matchName, status: "not_found" });
+        continue;
+      }
+
+      if (user.onboardingCompletedAt) {
+        results.push({ matchName: entry.matchName, status: "skipped", userId: user._id });
+        continue;
+      }
+
+      const discord = (entry.discord?.trim() ?? "").replace(/^@/, "");
+      const socialLinks = discord ? { discord } : undefined;
+      const username = await resolveUsernameForUser(ctx, user, undefined);
+
+      await ctx.db.patch(user._id, {
+        name: entry.name.trim(),
+        username,
+        location: entry.location.trim(),
+        bio: trimText(entry.bio) || undefined,
+        skills: normalizeSkills(entry.skills),
+        vision: entry.vision.trim(),
+        why: entry.why.trim(),
+        learning: entry.learning?.trim() || undefined,
+        ...(socialLinks !== undefined ? { socialLinks } : {}),
+        onboardingCompletedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      results.push({ matchName: entry.matchName, status: "applied", userId: user._id });
+    }
+
+    return results;
   },
 });

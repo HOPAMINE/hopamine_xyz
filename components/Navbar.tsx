@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isGreenNavRoute, isPortalRoute, NAV_LINKS } from "@/lib/navRoutes";
+import { isGreenNavRoute, isPortalRoute, MOBILE_MENU_LINKS, NAV_LINKS } from "@/lib/navRoutes";
 import { MobileMenu } from "./MobileMenu";
 import { NavbarNotifications } from "./NavbarNotifications";
 import { ProfileNavLink } from "./ProfileNavLink";
@@ -12,7 +12,11 @@ export default function Navbar() {
   const pathname = usePathname();
   const isPortal = isPortalRoute(pathname);
   const isGreenNav = isGreenNavRoute(pathname);
-  const mobileNavLinks = NAV_LINKS.map(({ href, label }) => ({ href, label }));
+  const mobileNavLinks = MOBILE_MENU_LINKS.map(({ href, label }) => ({ href, label }));
+
+  const mobileClaimClass = isGreenNav
+    ? "inline-flex h-10 shrink-0 touch-manipulation items-center justify-center border border-white/35 px-3 font-mono text-[10px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-events focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-4 sm:text-xs"
+    : "inline-flex h-10 shrink-0 touch-manipulation items-center justify-center border border-white/35 px-3 font-mono text-[10px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-navbar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-4 sm:text-xs";
 
   return (
     <header
@@ -43,8 +47,11 @@ export default function Navbar() {
             className="h-6 w-auto shrink-0 object-contain sm:h-7"
           />
         </Link>
-        <div className="flex shrink-0 items-center gap-2 md:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:gap-3">
           {isPortal ? <NavbarNotifications /> : null}
+          <Link href="/claim" className={`md:hidden ${mobileClaimClass}`}>
+            Claim
+          </Link>
           <ProfileNavLink className="md:hidden" />
           <MobileMenu links={mobileNavLinks} variant={isGreenNav ? "events" : "default"} />
           <ul className="hidden items-center md:flex md:flex-wrap md:justify-end md:gap-6 lg:gap-8">

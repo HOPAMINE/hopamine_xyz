@@ -50,7 +50,8 @@ export function ClaimParticipationContent() {
     }
   }, [projectClaim?.projectIndex]);
 
-  const displayName = user?.fullName ?? user?.firstName ?? "Builder";
+  const displayName =
+    convexUser?.name?.trim() || user?.fullName || user?.firstName || "Builder";
   const claimed = participation !== null && participation !== undefined;
   const projectClaimed = projectClaim !== null && projectClaim !== undefined;
 
