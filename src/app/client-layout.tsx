@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useEffect, useRef } from "react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
@@ -19,6 +19,7 @@ const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
   const { user, isLoaded: isUserLoaded } = useUser();
+  const { isAuthenticated } = useConvexAuth();
   const getOrCreateUser = useMutation(api.users.getOrCreate);
   const ensureUsername = useMutation(api.users.ensureUsername);
   const existing = useQuery(
@@ -27,21 +28,32 @@ function UserSyncInner() {
   );
   const pathname = usePathname();
   const router = useRouter();
+  const creatingRef = useRef(false);
 
-  // Create the Convex user row when a Clerk session first appears
+  // Create the Convex user row once a Clerk session exists AND the Convex auth
+  // token is ready. Gating on `isAuthenticated` (rather than firing as soon as
+  // the query is loading) avoids a race on fresh signups where the mutation runs
+  // before the token propagates, throws "Unauthorized", and is never retried —
+  // leaving the user with no row and stranded off the onboarding gate.
   useEffect(() => {
-    if (!user || !isUserLoaded || existing !== undefined) return;
+    if (!user || !isUserLoaded || !isAuthenticated) return;
+    if (existing || creatingRef.current) return; // row exists or creation in flight
 
+    creatingRef.current = true;
     void getOrCreateUser({
       name: user.fullName ?? user.firstName ?? "",
       email: user.primaryEmailAddress?.emailAddress ?? "",
       clerkId: user.id,
       avatarUrl: user.imageUrl ?? "",
       username: user.username || undefined,
-    }).catch((err: unknown) => {
-      console.error("[UserSync] getOrCreate failed:", err);
-    });
-  }, [user, isUserLoaded, getOrCreateUser, existing]);
+    })
+      .catch((err: unknown) => {
+        console.error("[UserSync] getOrCreate failed:", err);
+      })
+      .finally(() => {
+        creatingRef.current = false;
+      });
+  }, [user, isUserLoaded, isAuthenticated, existing, getOrCreateUser]);
 
   // Assign a Hopamine username when missing (e.g. legacy accounts or skipped onboarding step)
   useEffect(() => {
