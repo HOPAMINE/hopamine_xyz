@@ -59,18 +59,6 @@ function UserSyncInner() {
     router.replace(getOnboardingPath(pathname));
   }, [existing, pathname, router]);
 
-  const updateLastSeen = useMutation(api.users.updateLastSeen);
-
-  useEffect(() => {
-    if (!existing) return;
-    const fire = () => {
-      if (document.visibilityState === "visible") void updateLastSeen();
-    };
-    fire();
-    const id = setInterval(fire, 30_000);
-    return () => clearInterval(id);
-  }, [existing, updateLastSeen]);
-
   return null;
 }
 

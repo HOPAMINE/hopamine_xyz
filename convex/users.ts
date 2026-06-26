@@ -423,7 +423,7 @@ export const assignGeneratedUsernameForUser = internalMutation({
   },
 });
 
-/** Backfills usernames one user at a time to avoid OCC conflicts with updateLastSeen. */
+/** Backfills usernames one user at a time to avoid OCC conflicts on the users table. */
 export const backfillMissingUsernames = internalAction({
   args: {},
   returns: v.object({
@@ -471,20 +471,6 @@ export const deleteAccount = mutation({
     await ctx.db.delete(user._id);
 
     return { success: true };
-  },
-});
-
-export const updateLastSeen = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!user) return;
-    await ctx.db.patch(user._id, { lastSeenAt: Date.now() });
   },
 });
 
