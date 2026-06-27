@@ -23,6 +23,7 @@ function UserSyncInner() {
   const getOrCreateUser = useMutation(api.users.getOrCreate);
   const ensureUsername = useMutation(api.users.ensureUsername);
   const setOnline = useMutation(api.presence.setOnline);
+  const setOffline = useMutation(api.presence.setOffline);
   const existing = useQuery(
     api.users.getCurrentUser,
     isUserLoaded && user ? {} : "skip",
@@ -89,6 +90,9 @@ function UserSyncInner() {
     };
 
     const handlePageHide = () => {
+      // Primary: WebSocket mutation (Convex connection is still open during pagehide)
+      void setOffline();
+      // Backup: HTTP keepalive for when the WebSocket is already gone
       if (tokenRef.current && convexSiteUrl) {
         void fetch(`${convexSiteUrl}/presence/offline`, {
           method: "POST",
@@ -107,7 +111,7 @@ function UserSyncInner() {
       window.removeEventListener("focus", handleVisible);
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [existing, getToken]);
+  }, [existing, getToken, setOffline]);
 
   return null;
 }
