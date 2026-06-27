@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { isPortalRoute, isProjectsRoute, isGreenNavRoute } from "@/lib/navRoutes";
@@ -19,14 +19,18 @@ const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", 
 /** Syncs Convex `users` when Clerk session exists and gates incomplete onboarding. */
 function UserSyncInner() {
   const { user, isLoaded: isUserLoaded } = useUser();
+  const { getToken } = useAuth();
   const getOrCreateUser = useMutation(api.users.getOrCreate);
   const ensureUsername = useMutation(api.users.ensureUsername);
+  const setOnline = useMutation(api.presence.setOnline);
   const existing = useQuery(
     api.users.getCurrentUser,
     isUserLoaded && user ? {} : "skip",
   );
   const pathname = usePathname();
   const router = useRouter();
+  const tokenRef = useRef<string | null>(null);
+  const didSetOnlineRef = useRef(false);
 
   // Create the Convex user row when a Clerk session first appears
   useEffect(() => {
@@ -53,23 +57,57 @@ function UserSyncInner() {
 
   // Redirect to onboarding if the user hasn't completed it yet
   useEffect(() => {
-    if (!existing) return; // null (not loaded yet) or skip
-    if (existing.onboardingCompletedAt) return; // already done
+    if (!existing) return;
+    if (existing.onboardingCompletedAt) return;
     if (ONBOARDING_EXEMPT.some((p) => pathname.startsWith(p))) return;
     router.replace(getOnboardingPath(pathname));
   }, [existing, pathname, router]);
 
-  const updateLastSeen = useMutation(api.users.updateLastSeen);
+  // Mark online once when user data first becomes available
+  useEffect(() => {
+    if (!existing || didSetOnlineRef.current) return;
+    didSetOnlineRef.current = true;
+    void setOnline();
+  }, [existing, setOnline]);
 
+  // Keep tokenRef fresh and fire keepalive offline on tab close
   useEffect(() => {
     if (!existing) return;
-    const fire = () => {
-      if (document.visibilityState === "visible") void updateLastSeen();
+
+    const convexSiteUrl = (process.env.NEXT_PUBLIC_CONVEX_URL ?? "")
+      .replace(".convex.cloud", ".convex.site");
+
+    const refreshToken = async () => {
+      const token = await getToken({ template: "convex" });
+      tokenRef.current = token ?? null;
     };
-    fire();
-    const id = setInterval(fire, 30_000);
-    return () => clearInterval(id);
-  }, [existing, updateLastSeen]);
+
+    void refreshToken();
+
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") void refreshToken();
+    };
+
+    const handlePageHide = () => {
+      if (tokenRef.current && convexSiteUrl) {
+        void fetch(`${convexSiteUrl}/presence/offline`, {
+          method: "POST",
+          keepalive: true,
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisible);
+    window.addEventListener("focus", handleVisible);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisible);
+      window.removeEventListener("focus", handleVisible);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [existing, getToken]);
 
   return null;
 }

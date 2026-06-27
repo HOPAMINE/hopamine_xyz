@@ -142,4 +142,10 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_kind", ["userId", "kind"])
     .index("by_hackathon_participation", ["hackathonParticipationId"]),
+
+  presence: defineTable({
+    userId: v.id("users"),
+    isOnline: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

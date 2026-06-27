@@ -423,7 +423,7 @@ export const assignGeneratedUsernameForUser = internalMutation({
   },
 });
 
-/** Backfills usernames one user at a time to avoid OCC conflicts with updateLastSeen. */
+/** Backfills usernames one user at a time to avoid write conflicts. */
 export const backfillMissingUsernames = internalAction({
   args: {},
   returns: v.object({
@@ -474,19 +474,6 @@ export const deleteAccount = mutation({
   },
 });
 
-export const updateLastSeen = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!user) return;
-    await ctx.db.patch(user._id, { lastSeenAt: Date.now() });
-  },
-});
 
 export const updateAvailability = mutation({
   args: {
@@ -533,7 +520,6 @@ export const listBuilders = query({
       interests: v.optional(v.array(v.string())),
       projectTitle: v.optional(v.string()),
       projectBlurb: v.optional(v.string()),
-      lastSeenAt: v.optional(v.number()),
       socialLinks: v.optional(v.record(v.string(), v.string())),
     }),
   ),
@@ -541,6 +527,7 @@ export const listBuilders = query({
     const users = await ctx.db
       .query("users")
       .withIndex("by_onboarding_completed_at", (q) => q.gt("onboardingCompletedAt", 0))
+      .order("desc")
       .take(100);
 
     const enriched = await Promise.all(
@@ -575,14 +562,9 @@ export const listBuilders = query({
           interests: user.interests,
           projectTitle,
           projectBlurb,
-          lastSeenAt: user.lastSeenAt,
           socialLinks: user.socialLinks,
         };
       }),
-    );
-
-    enriched.sort(
-      (a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0),
     );
 
     return enriched;
