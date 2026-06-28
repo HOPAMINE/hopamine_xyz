@@ -17,7 +17,7 @@ type Props = {
   interests: string[];
   rot: number;
   triangles: TriDatum[];
-  lastSeenAt?: number;
+  isOnline: boolean;
 };
 
 const AVATAR_SIZE = 72;
@@ -57,9 +57,8 @@ export function BuilderCard({
   interests,
   rot,
   triangles,
-  lastSeenAt,
+  isOnline,
 }: Props) {
-  const isActive = !!lastSeenAt && Date.now() - lastSeenAt < 2 * 60 * 1000;
   const profileHref = getPublicProfilePath({ _id: userId, username });
 
   const initials = name
@@ -113,7 +112,7 @@ export function BuilderCard({
       </div>
 
       <div
-        className={`absolute h-3 w-3 rounded-full border-2 border-white ${isActive ? "bg-[#00a6f3]" : "bg-neutral-300"}`}
+        className={`absolute h-3 w-3 rounded-full border-2 border-white ${isOnline ? "bg-[#00a6f3]" : "bg-neutral-300"}`}
         style={{ left: 16 + AVATAR_SIZE - 10, top: BANNER_H - AVATAR_SIZE / 2 + AVATAR_SIZE - 10 }}
       />
 

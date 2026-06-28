@@ -514,64 +514,26 @@ export const listBuilders = query({
       username: v.optional(v.string()),
       avatarUrl: v.string(),
       bio: v.optional(v.string()),
-      location: v.optional(v.string()),
       skills: v.optional(v.array(v.string())),
       interests: v.optional(v.array(v.string())),
-      projectTitle: v.optional(v.string()),
-      projectBlurb: v.optional(v.string()),
-      lastSeenAt: v.optional(v.number()),
-      socialLinks: v.optional(v.record(v.string(), v.string())),
     }),
   ),
   handler: async (ctx) => {
     const users = await ctx.db
       .query("users")
       .withIndex("by_onboarding_completed_at", (q) => q.gt("onboardingCompletedAt", 0))
+      .order("desc")
       .take(100);
 
-    const enriched = await Promise.all(
-      users.map(async (user) => {
-        const ownedProjects = await ctx.db
-          .query("projects")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
-
-        const latestProject = ownedProjects.sort((a, b) => b.updatedAt - a.updatedAt)[0];
-
-        let projectTitle: string | undefined = latestProject?.title;
-        let projectBlurb: string | undefined = latestProject?.blurb;
-
-        if (!projectTitle) {
-          const claim = await ctx.db
-            .query("hackathonClaims")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .unique();
-          projectTitle = claim?.projectTitle;
-          projectBlurb = claim?.blurb ?? projectBlurb;
-        }
-
-        return {
-          _id: user._id,
-          name: user.name,
-          username: user.username,
-          avatarUrl: user.avatarUrl,
-          bio: user.bio,
-          location: user.location,
-          skills: user.skills,
-          interests: user.interests,
-          projectTitle,
-          projectBlurb,
-          lastSeenAt: user.lastSeenAt,
-          socialLinks: user.socialLinks,
-        };
-      }),
-    );
-
-    enriched.sort(
-      (a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0),
-    );
-
-    return enriched;
+    return users.map((user) => ({
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      skills: user.skills,
+      interests: user.interests,
+    }));
   },
 });
 

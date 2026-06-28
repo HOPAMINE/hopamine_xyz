@@ -529,13 +529,16 @@ function LeftProfilePanel({
   user,
   readOnly = false,
   showFirstNameOnCard = false,
+  isOnline = false,
 }: {
   user: ProfileUser;
   readOnly?: boolean;
   showFirstNameOnCard?: boolean;
+  isOnline?: boolean;
 }) {
   const { signOut } = useClerk();
   const updateProfile = useMutation(api.users.updateProfile);
+  const setOffline = useMutation(api.presence.setOffline);
   const initials = getInitials(user.name);
 
   return (
@@ -553,9 +556,9 @@ function LeftProfilePanel({
           </div>
           {/* Presence dot — online/offline indicator */}
           <span
-            className="absolute rounded-full bg-[#00a6f3] border-2 border-white"
+            className={`absolute rounded-full border-2 border-white ${isOnline ? "bg-[#00a6f3]" : "bg-neutral-300"}`}
             style={{ width: 14, height: 14, right: 1, bottom: 3 }}
-            aria-label="Online"
+            aria-label={isOnline ? "Online" : "Offline"}
           />
         </div>
         <div className="min-w-0">
@@ -679,7 +682,14 @@ function LeftProfilePanel({
       {!readOnly ? (
         <button
           type="button"
-          onClick={() => signOut({ redirectUrl: "/" })}
+          onClick={async () => {
+            try {
+              await setOffline();
+            } catch {
+              // sign out regardless
+            }
+            void signOut({ redirectUrl: "/" });
+          }}
           className={logoutButtonClass}
         >
           Logout
@@ -1132,14 +1142,16 @@ export function ProfileTabContent({
   user,
   readOnly = false,
   showFirstNameOnCard = false,
+  isOnline = false,
 }: {
   user: ProfileUser;
   readOnly?: boolean;
   showFirstNameOnCard?: boolean;
+  isOnline?: boolean;
 }) {
   return (
     <div className="flex w-full flex-col items-stretch gap-4 lg:flex-row lg:gap-2.5">
-      <LeftProfilePanel user={user} readOnly={readOnly} showFirstNameOnCard={showFirstNameOnCard} />
+      <LeftProfilePanel user={user} readOnly={readOnly} showFirstNameOnCard={showFirstNameOnCard} isOnline={isOnline} />
       <RightPanel builderName={user.name} userId={user._id} readOnly={readOnly} />
     </div>
   );
