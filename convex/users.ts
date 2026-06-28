@@ -423,7 +423,7 @@ export const assignGeneratedUsernameForUser = internalMutation({
   },
 });
 
-/** Backfills usernames one user at a time to avoid write conflicts. */
+/** Backfills usernames one user at a time to avoid OCC conflicts on the users table. */
 export const backfillMissingUsernames = internalAction({
   args: {},
   returns: v.object({
@@ -473,7 +473,6 @@ export const deleteAccount = mutation({
     return { success: true };
   },
 });
-
 
 export const updateAvailability = mutation({
   args: {
