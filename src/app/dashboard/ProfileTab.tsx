@@ -29,6 +29,8 @@ import {
   PARTICIPATION_CARD_TOTAL_HEIGHT,
   PARTICIPATION_CARD_WIDTH,
 } from "../../../components/claim/participationCardStyles";
+import { DitheredAvatarImage } from "../../../components/avatar/DitheredAvatarImage";
+import { ProfileAvatarUpload } from "../../../components/profile/ProfileAvatarUpload";
 import { robotoFlex, robotoMono } from "../../../fonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -541,18 +543,34 @@ function LeftProfilePanel({
   return (
     <aside className="flex w-full shrink-0 flex-col gap-4 overflow-hidden rounded-[28px] bg-white px-5 py-5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] lg:w-[387px] lg:rounded-[40px] lg:px-6">
       {/* Identity row: avatar + name + location */}
-      <div className="flex items-end gap-[15px]">
-        <div className="shrink-0" style={{ width: AV_SIZE, height: AV_SIZE }}>
-          <div className="w-full h-full rounded-full overflow-hidden bg-[#0090d4] border-2 border-white flex items-center justify-center">
+      <div className="flex items-start gap-[15px]">
+        {readOnly ? (
+          <div
+            className="shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#0090d4]"
+            style={{ width: AV_SIZE, height: AV_SIZE }}
+          >
             {user.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+              <DitheredAvatarImage
+                src={user.avatarUrl}
+                size={AV_SIZE}
+                className="h-full w-full object-cover"
+              />
             ) : (
-              <span className="font-serif text-xl font-semibold text-white">{initials}</span>
+              <span className="flex h-full w-full items-center justify-center font-serif text-xl font-semibold text-white">
+                {initials}
+              </span>
             )}
           </div>
-        </div>
-        <div className="min-w-0">
+        ) : (
+          <ProfileAvatarUpload
+            avatarUrl={user.avatarUrl}
+            name={user.name}
+            size={AV_SIZE}
+            variant="light"
+            controls="none"
+          />
+        )}
+        <div className="min-w-0 flex-1 pt-0.5">
           <h1 className={`${robotoFlex.className} text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] text-neutral-900`}>
             <FloatingName name={showFirstNameOnCard ? getFirstName(user.name) : user.name} />
           </h1>

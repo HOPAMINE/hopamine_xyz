@@ -11,7 +11,7 @@ type ProjectActionsProps = {
   projectTitle: string;
   viewerRole: "owner" | "member" | null;
   hasPendingJoinRequest?: boolean;
-  variant?: "dashboard" | "events";
+  variant?: "dashboard" | "events" | "portal";
   /** Grey vertical dots above the card (dashboard project row). */
   trigger?: "default" | "minimal";
   /** White panel dropdown like navbar notifications. */
@@ -165,6 +165,7 @@ export function ProjectActions({
   const [menuCoords, setMenuCoords] = useState<{ top: number; right: number } | null>(null);
 
   const isDashboard = variant === "dashboard";
+  const isPortal = variant === "portal";
   const isOwner = viewerRole === "owner";
   const isMember = viewerRole === "member";
   const isOnProject = isOwner || isMember;
@@ -177,13 +178,17 @@ export function ProjectActions({
     ? "inline-flex touch-manipulation items-center justify-center p-1 text-neutral-400 transition-colors hover:text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
     : isDashboard
       ? `${actionBase} border-accent-navbar/35 bg-white text-accent-navbar hover:bg-accent-navbar hover:text-white`
-      : `${actionBase} border-white/35 bg-accent-events text-white hover:bg-white hover:text-accent-events`;
+      : isPortal
+        ? `${actionBase} border-white/35 bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar`
+        : `${actionBase} border-white/35 bg-accent-events text-white hover:bg-white hover:text-accent-events`;
 
   const menuClass = isPanelMenu
     ? "z-60 w-[min(14rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-white/20 bg-white text-neutral-900 shadow-xl"
     : isDashboard
       ? "absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-[12rem] overflow-hidden rounded-2xl border border-accent-navbar/20 bg-white py-1 shadow-lg"
-      : "absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-[12rem] overflow-hidden rounded-2xl border border-white/20 bg-accent-events py-1 shadow-lg";
+      : isPortal
+        ? "absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-[12rem] overflow-hidden rounded-2xl border border-white/20 bg-accent-navbar py-1 shadow-lg"
+        : "absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-[12rem] overflow-hidden rounded-2xl border border-white/20 bg-accent-events py-1 shadow-lg";
 
   const menuItemClass = isPanelMenu
     ? `${robotoMono.className} flex w-full items-center px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-40`
@@ -326,6 +331,37 @@ export function ProjectActions({
     return null;
   }
 
+  const requestButtonClass = isDashboard
+    ? `${robotoMono.className} inline-flex items-center justify-center rounded-full border border-accent-navbar/35 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-accent-navbar transition-colors hover:bg-accent-navbar hover:text-white disabled:cursor-not-allowed disabled:opacity-40`
+    : isPortal
+      ? `${robotoMono.className} inline-flex items-center justify-center rounded-full border border-white/35 bg-accent-navbar px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-navbar disabled:cursor-not-allowed disabled:opacity-40`
+      : `${robotoMono.className} inline-flex items-center justify-center rounded-full border border-white/35 bg-accent-events px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-events disabled:cursor-not-allowed disabled:opacity-40`;
+
+  // Joinable projects: direct CTA instead of a overflow menu.
+  if (showRequest) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          disabled={acting || hasPendingJoinRequest}
+          onClick={() => void handleRequestJoin()}
+          className={requestButtonClass}
+        >
+          {acting
+            ? "Requesting…"
+            : hasPendingJoinRequest
+              ? "Request pending"
+              : "Request to join"}
+        </button>
+        {error ? (
+          <p className={`${robotoMono.className} text-[10px] text-red-500`} role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className={`relative ${isMinimalTrigger ? "" : "flex flex-col gap-1"}`} ref={menuRef}>
@@ -416,17 +452,6 @@ export function ProjectActions({
                 className={dangerMenuItemClass}
               >
                 Leave project
-              </button>
-            ) : null}
-            {showRequest ? (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={acting || hasPendingJoinRequest}
-                onClick={() => void handleRequestJoin()}
-                className={menuItemClass}
-              >
-                {hasPendingJoinRequest ? "Request pending" : "Request to join"}
               </button>
             ) : null}
             </div>

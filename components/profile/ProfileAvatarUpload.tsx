@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { DitheredAvatarImage } from "../avatar/DitheredAvatarImage";
 import { robotoMono } from "../../fonts";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -14,9 +14,26 @@ type ProfileAvatarUploadProps = {
   avatarUrl: string;
   fallbackUrl?: string;
   name: string;
+  /** Visual size of the avatar circle in px. */
+  size?: number;
+  /** Light = white profile card; dark = events / edit form. */
+  variant?: "light" | "dark";
+  /**
+   * `button` — full Change/Upload control beside the avatar.
+   * `link` — compact text control under the avatar (profile card).
+   * `none` — avatar itself is the only upload trigger.
+   */
+  controls?: "button" | "link" | "none";
 };
 
-export function ProfileAvatarUpload({ avatarUrl, fallbackUrl, name }: ProfileAvatarUploadProps) {
+export function ProfileAvatarUpload({
+  avatarUrl,
+  fallbackUrl,
+  name,
+  size = 96,
+  variant = "dark",
+  controls = "button",
+}: ProfileAvatarUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const updateProfilePicture = useMutation(api.users.updateProfilePicture);
@@ -25,6 +42,7 @@ export function ProfileAvatarUpload({ avatarUrl, fallbackUrl, name }: ProfileAva
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const displayUrl = previewUrl || avatarUrl || fallbackUrl || "";
+  const isLight = variant === "light";
 
   useEffect(() => {
     return () => {
@@ -80,23 +98,50 @@ export function ProfileAvatarUpload({ avatarUrl, fallbackUrl, name }: ProfileAva
   }
 
   const initials = name.trim().charAt(0).toUpperCase() || "?";
-  const changeButtonClass = `${robotoMono.className} inline-flex items-center rounded-full border border-white/35 bg-accent-events px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-events disabled:opacity-40`;
+  const changeButtonClass = isLight
+    ? `${robotoMono.className} inline-flex items-center rounded-full border border-accent-navbar/25 bg-accent-navbar px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-navbar disabled:opacity-40`
+    : `${robotoMono.className} inline-flex items-center rounded-full border border-white/35 bg-accent-events px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-events disabled:opacity-40`;
+
+  const hintClass = isLight
+    ? `${robotoMono.className} mt-1.5 text-xs text-neutral-500`
+    : `${robotoMono.className} mt-1.5 text-xs text-white/55`;
+
+  const errorClass = isLight
+    ? `${robotoMono.className} mt-1 text-xs text-red-600`
+    : `${robotoMono.className} mt-1 text-xs text-red-300`;
+
+  const borderClass = isLight ? "border-2 border-white" : "border-2 border-white/90";
+
+  function openPicker() {
+    if (!uploading) inputRef.current?.click();
+  }
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-white/90 bg-white/10 sm:size-24">
+    <div
+      className={
+        controls === "button"
+          ? "flex items-center gap-4"
+          : "inline-flex flex-col items-start gap-1"
+      }
+    >
+      <button
+        type="button"
+        onClick={openPicker}
+        disabled={uploading}
+        aria-label={displayUrl ? "Change profile photo" : "Upload profile photo"}
+        className={`relative shrink-0 overflow-hidden rounded-full bg-[#0090d4] ${borderClass} transition-opacity hover:opacity-90 disabled:opacity-60`}
+        style={{ width: size, height: size }}
+      >
         {displayUrl ? (
-          <Image
+          <DitheredAvatarImage
             src={displayUrl}
-            alt=""
-            width={96}
-            height={96}
-            unoptimized={displayUrl.startsWith("blob:")}
+            size={size}
             className="h-full w-full object-cover"
           />
         ) : (
           <span
-            className={`${robotoMono.className} flex h-full w-full items-center justify-center text-2xl text-white sm:text-3xl`}
+            className={`${robotoMono.className} flex h-full w-full items-center justify-center text-2xl text-white`}
+            style={{ fontSize: Math.max(16, Math.round(size * 0.35)) }}
           >
             {initials}
           </span>
@@ -106,28 +151,59 @@ export function ProfileAvatarUpload({ avatarUrl, fallbackUrl, name }: ProfileAva
             <span className={`${robotoMono.className} text-xs text-white`}>…</span>
           </div>
         ) : null}
-      </div>
+      </button>
 
-      <div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPT}
-          className="sr-only"
-          onChange={handleFileChange}
-          disabled={uploading}
-        />
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className={changeButtonClass}
-        >
-          {uploading ? "Uploading…" : "Change photo"}
-        </button>
-        <p className={`${robotoMono.className} mt-1.5 text-xs text-white/55`}>JPG, PNG, WebP, or GIF · max 5MB</p>
-        {error ? <p className={`${robotoMono.className} mt-1 text-xs text-red-300`}>{error}</p> : null}
-      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPT}
+        className="sr-only"
+        onChange={handleFileChange}
+        disabled={uploading}
+      />
+
+      {controls === "button" ? (
+        <div>
+          <button
+            type="button"
+            onClick={openPicker}
+            disabled={uploading}
+            className={changeButtonClass}
+          >
+            {uploading
+              ? "Uploading…"
+              : displayUrl
+                ? "Change photo"
+                : "Upload photo"}
+          </button>
+          <p className={hintClass}>JPG, PNG, WebP, or GIF · max 5MB</p>
+          {error ? <p className={errorClass}>{error}</p> : null}
+        </div>
+      ) : null}
+
+      {controls === "link" ? (
+        <div>
+          <button
+            type="button"
+            onClick={openPicker}
+            disabled={uploading}
+            className={
+              isLight
+                ? `${robotoMono.className} text-[10px] font-semibold uppercase tracking-wide text-accent-navbar transition-colors hover:underline disabled:opacity-40`
+                : `${robotoMono.className} text-[10px] font-semibold uppercase tracking-wide text-white/80 transition-colors hover:underline disabled:opacity-40`
+            }
+          >
+            {uploading
+              ? "Uploading…"
+              : displayUrl
+                ? "Change photo"
+                : "Upload photo"}
+          </button>
+          {error ? <p className={errorClass}>{error}</p> : null}
+        </div>
+      ) : null}
+
+      {controls === "none" && error ? <p className={errorClass}>{error}</p> : null}
     </div>
   );
 }

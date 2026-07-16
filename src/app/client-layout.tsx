@@ -105,6 +105,15 @@ function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function scrollShellClass(pathname: string, isLanding: boolean): string {
+  const overflow = isLanding ? "overflow-y-hidden" : "overflow-y-auto";
+  if (isGreenNavRoute(pathname)) {
+    return `h-dvh overflow-x-hidden bg-accent-events ${overflow}`;
+  }
+  // Solid blue routes + default so rubber-band overscroll never flashes white.
+  return `h-dvh overflow-x-hidden bg-accent-navbar ${overflow}`;
+}
+
 export default function ClientLayout({
   children,
 }: Readonly<{
@@ -131,9 +140,7 @@ export default function ClientLayout({
   return (
     <Providers>
       <UserGate />
-      <div
-        className={`h-dvh overflow-x-hidden ${isLanding ? "overflow-y-hidden" : "overflow-y-auto"}`}
-      >
+      <div className={scrollShellClass(pathname, isLanding)}>
         <AppShell>{children}</AppShell>
       </div>
     </Providers>

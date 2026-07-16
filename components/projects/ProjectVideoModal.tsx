@@ -26,7 +26,8 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm" />
         <Dialog.Content
-          className={`${robotoFlex.className} fixed left-1/2 top-1/2 z-[111] flex w-[min(94vw,56rem)] max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.875rem] border border-white/25 bg-accent-events text-white shadow-xl outline-none`}
+          aria-describedby={undefined}
+          className={`${robotoFlex.className} fixed left-1/2 top-1/2 z-[111] flex w-[min(94vw,56rem)] max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.875rem] border border-white/25 bg-accent-navbar text-white shadow-xl outline-none`}
         >
           {project ? (
             <>
@@ -34,7 +35,7 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                 <Dialog.Close asChild>
                   <button
                     type="button"
-                    className={`${robotoMono.className} inline-flex items-center gap-1.5 rounded-full border border-white/35 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-events sm:px-4 sm:py-2`}
+                    className={`${robotoMono.className} inline-flex items-center gap-1.5 rounded-full border border-white/35 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-accent-navbar sm:px-4 sm:py-2`}
                   >
                     <span aria-hidden="true">←</span>
                     Back
@@ -63,7 +64,7 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                       href={embed.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`${robotoMono.className} mt-4 inline-flex rounded-full border border-white/35 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-accent-events transition-colors hover:bg-white/90`}
+                      className={`${robotoMono.className} mt-4 inline-flex rounded-full border border-white/35 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-accent-navbar transition-colors hover:bg-white/90`}
                     >
                       Open demo
                     </Link>
@@ -78,7 +79,7 @@ export function ProjectVideoModal({ project, onClose, formatTitle }: ProjectVide
                         href={project.liveUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`${robotoMono.className} mt-4 inline-flex rounded-full border border-white/35 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-accent-events transition-colors hover:bg-white/90`}
+                        className={`${robotoMono.className} mt-4 inline-flex rounded-full border border-white/35 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-accent-navbar transition-colors hover:bg-white/90`}
                       >
                         Open live app
                       </Link>

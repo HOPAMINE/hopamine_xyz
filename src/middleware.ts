@@ -22,6 +22,12 @@ const isAuthRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Public browse pages don't need a Clerk session check. Awaiting auth() here
+  // was hanging for 20s+ when Clerk was slow and aborting RSC soft navigations.
+  if (isPublicRoute(req) && !isAuthRoute(req)) {
+    return NextResponse.next();
+  }
+
   const { userId } = await auth();
 
   if (userId && isAuthRoute(req)) {

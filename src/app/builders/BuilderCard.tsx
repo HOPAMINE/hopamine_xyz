@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Id } from "../../../convex/_generated/dataModel";
+import { DitheredAvatarImage } from "../../../components/avatar/DitheredAvatarImage";
 import { getPublicProfilePath } from "@/lib/profileUrls";
 import { robotoMono, sortsMillGoudy } from "../../../fonts";
 import { TriDatum, VW, VH, TRI_STYLE } from "./hexMosaic";
@@ -94,12 +94,9 @@ export function BuilderCard({
         }}
       >
         {avatarUrl ? (
-          <Image
+          <DitheredAvatarImage
             src={avatarUrl}
-            alt=""
-            width={AVATAR_SIZE}
-            height={AVATAR_SIZE}
-            unoptimized
+            size={AVATAR_SIZE}
             className="h-full w-full object-cover"
           />
         ) : (

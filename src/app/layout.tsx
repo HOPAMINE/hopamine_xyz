@@ -28,9 +28,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${instrumentSerif.variable} ${robotoMono.variable} m-0 h-dvh overscroll-none bg-accent-navbar p-0 antialiased md:bg-white`}
+      className={`${instrumentSerif.variable} ${robotoMono.variable} m-0 h-dvh overscroll-none bg-accent-navbar p-0 antialiased`}
     >
-      <body className="m-0 flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-accent-navbar p-0 font-serif text-neutral-900 md:bg-white">
+      <body className="m-0 flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-accent-navbar p-0 font-serif text-neutral-900">
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

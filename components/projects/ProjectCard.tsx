@@ -7,8 +7,10 @@ import { formatProjectTitle } from "@/lib/formatProjectTitle";
 import { ProjectLinkPills } from "./ProjectLinkPills";
 import {
   projectCardCompactDashboardShellClassName,
+  projectCardCompactPortalShellClassName,
   projectCardCompactShellClassName,
   projectCardDashboardShellClassName,
+  projectCardPortalShellClassName,
   projectCardShellClassName,
   projectCardStaticShellClassName,
 } from "./projectCardStyles";
@@ -21,7 +23,7 @@ type ProjectCardProps = Pick<
   onOpen: () => void;
   showLinkPills?: boolean;
   showHackathonBranding?: boolean;
-  variant?: "events" | "dashboard";
+  variant?: "events" | "dashboard" | "portal";
   size?: "default" | "compact";
   interactive?: boolean;
   /** Keep the green card on hover (dashboard profile projects). */
@@ -48,28 +50,37 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const isCompact = size === "compact";
   const isStaticHover = hoverEffect === "none";
+  const isPortal = variant === "portal";
   const shellClassName =
     variant === "dashboard"
       ? isCompact
         ? projectCardCompactDashboardShellClassName
         : projectCardDashboardShellClassName
-      : isCompact
-        ? projectCardCompactShellClassName
-        : isStaticHover
-          ? projectCardStaticShellClassName
-          : projectCardShellClassName;
+      : isPortal
+        ? isCompact
+          ? projectCardCompactPortalShellClassName
+          : projectCardPortalShellClassName
+        : isCompact
+          ? projectCardCompactShellClassName
+          : isStaticHover
+            ? projectCardStaticShellClassName
+            : projectCardShellClassName;
   const textColor = variant === "dashboard" ? "text-accent-navbar" : "text-white";
   const textMuted = variant === "dashboard" ? "text-accent-navbar/80" : "text-white/80";
   const hoverText = isStaticHover
     ? ""
     : variant === "dashboard"
       ? "group-hover/card:text-white"
-      : "group-hover/card:text-accent-events";
+      : isPortal
+        ? "group-hover/card:text-accent-navbar"
+        : "group-hover/card:text-accent-events";
   const hoverTextMuted = isStaticHover
     ? ""
     : variant === "dashboard"
       ? "group-hover/card:text-white/80"
-      : "group-hover/card:text-accent-events/80";
+      : isPortal
+        ? "group-hover/card:text-accent-navbar/80"
+        : "group-hover/card:text-accent-events/80";
   const logoClass = isCompact
     ? "h-[1.25rem] w-auto shrink-0 transition-opacity duration-200 group-hover/card:opacity-0"
     : "h-[1.8rem] w-auto shrink-0 transition-opacity duration-200 group-hover/card:opacity-0 sm:h-[2.1rem]";
@@ -169,7 +180,12 @@ export function ProjectCard({
         <div className={`${shellClassName} cursor-default`}>{cardBody}</div>
       )}
       {showLinkPills ? (
-        <ProjectLinkPills demoUrl={demoUrl} liveUrl={liveUrl} repoUrl={repoUrl} />
+        <ProjectLinkPills
+          demoUrl={demoUrl}
+          liveUrl={liveUrl}
+          repoUrl={repoUrl}
+          variant={isPortal ? "portal" : "events"}
+        />
       ) : null}
     </div>
   );

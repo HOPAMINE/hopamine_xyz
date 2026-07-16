@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { Doc } from "../../convex/_generated/dataModel";
 import { skillsToFormText, trimProfileText } from "@/lib/profileText";
+import { DitheredAvatarImage } from "../avatar/DitheredAvatarImage";
 import { robotoFlex, robotoMono } from "../../fonts";
 
 type ProfileDisplayProps = {
@@ -37,11 +37,9 @@ export function ProfileDisplay({ user, fallbackAvatarUrl }: ProfileDisplayProps)
     <div className="space-y-6">
       <div className="size-20 shrink-0 overflow-hidden rounded-full border-2 border-white/90 bg-white/10 sm:size-24">
         {avatarUrl ? (
-          <Image
+          <DitheredAvatarImage
             src={avatarUrl}
-            alt=""
-            width={96}
-            height={96}
+            size={96}
             className="h-full w-full object-cover"
           />
         ) : (

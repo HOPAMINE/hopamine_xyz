@@ -50,7 +50,7 @@ export function CommunityProjectsSection() {
               onOpen={() => {}}
               showLinkPills={false}
               showHackathonBranding={false}
-              variant="events"
+              variant="portal"
               interactive={false}
             />
             <ProjectActions
@@ -58,7 +58,7 @@ export function CommunityProjectsSection() {
               projectTitle={project.title}
               viewerRole={project.viewerRole}
               hasPendingJoinRequest={project.hasPendingJoinRequest}
-              variant="events"
+              variant="portal"
             />
           </div>
         ))}

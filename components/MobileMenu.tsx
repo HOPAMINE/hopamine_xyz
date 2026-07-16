@@ -39,7 +39,10 @@ export function MobileMenu({
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-100 bg-neutral-950/50 backdrop-blur-[2px] transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
-        <Dialog.Content className={`fixed inset-0 z-101 flex flex-col ${menuBg} outline-none transition-opacity duration-200 ease-out data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0 data-[state=open]:opacity-100`}>
+        <Dialog.Content
+          aria-describedby={undefined}
+          className={`fixed inset-0 z-101 flex flex-col ${menuBg} outline-none transition-opacity duration-200 ease-out data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0 data-[state=open]:opacity-100`}
+        >
           <Dialog.Title className="sr-only">Site menu</Dialog.Title>
 
           <Dialog.Close asChild>

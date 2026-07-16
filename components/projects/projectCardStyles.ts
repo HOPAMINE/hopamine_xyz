@@ -33,6 +33,10 @@ const projectCardCompactFootprintClassName =
 export const projectCardShellClassName =
   "group/card flex min-h-[15.18rem] flex-1 cursor-pointer flex-col rounded-[1.875rem] border border-white/20 bg-accent-events p-5 text-left text-white shadow-sm transition-colors duration-200 hover:bg-white sm:p-6";
 
+/** Blue project card for the /projects portal page. */
+export const projectCardPortalShellClassName =
+  "group/card flex min-h-[15.18rem] flex-1 cursor-pointer flex-col rounded-[1.875rem] border border-white/20 bg-accent-navbar p-5 text-left text-white shadow-sm transition-colors duration-200 hover:bg-white sm:p-6";
+
 /** Green project card without hover invert (dashboard profile projects). */
 export const projectCardStaticShellClassName =
   "group/card flex min-h-[15.18rem] flex-1 cursor-pointer flex-col rounded-[1.875rem] border border-white/20 bg-accent-events p-5 text-left text-white shadow-sm sm:p-6";
@@ -41,6 +45,8 @@ export const projectCardDashboardShellClassName =
   "group/card flex min-h-[15.18rem] flex-1 cursor-pointer flex-col rounded-[1.875rem] border border-accent-navbar/20 bg-white p-5 text-left shadow-sm transition-colors duration-200 hover:bg-accent-navbar sm:p-6";
 
 export const projectCardCompactShellClassName = `group/card flex cursor-pointer flex-col rounded-[1.875rem] border border-white/20 bg-accent-events text-left text-white shadow-sm transition-colors duration-200 hover:bg-white ${projectCardCompactFootprintClassName}`;
+
+export const projectCardCompactPortalShellClassName = `group/card flex cursor-pointer flex-col rounded-[1.875rem] border border-white/20 bg-accent-navbar text-left text-white shadow-sm transition-colors duration-200 hover:bg-white ${projectCardCompactFootprintClassName}`;
 
 export const projectCardCompactDashboardShellClassName = `group/card flex cursor-pointer flex-col rounded-[1.875rem] border border-accent-navbar/20 bg-white text-left shadow-sm transition-colors duration-200 hover:bg-accent-navbar ${projectCardCompactFootprintClassName}`;
 

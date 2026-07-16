@@ -50,7 +50,7 @@ export default function ProjectsPage() {
 
   return (
     <main
-      className={`relative min-h-dvh w-full bg-accent-events pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
+      className={`relative min-h-dvh w-full bg-accent-navbar pb-16 pt-28 text-white md:pb-24 md:pt-32 ${NAV_ALIGN_PAD}`}
     >
       <div className="mx-auto w-full max-w-7xl">
         <header className="max-w-3xl">
@@ -78,8 +78,8 @@ export default function ProjectsPage() {
                     onClick={() => setField(filter)}
                     className={
                       isSelected
-                        ? `${categoryPillBase} bg-white text-accent-events`
-                        : `${categoryPillBase} bg-accent-events text-white hover:bg-white hover:text-accent-events`
+                        ? `${categoryPillBase} bg-white text-accent-navbar`
+                        : `${categoryPillBase} bg-accent-navbar text-white hover:bg-white hover:text-accent-navbar`
                     }
                   >
                     {getFilterLabel(filter)}
@@ -117,6 +117,7 @@ export default function ProjectsPage() {
                   demoUrl={project.demoUrl}
                   repoUrl={project.repoUrl}
                   showHackathonBranding={false}
+                  variant="portal"
                   onOpen={() =>
                     setSelectedProject({
                       field: project.field,

@@ -59,6 +59,7 @@ export function SubmitInfoCard() {
             <Dialog.Portal>
               <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
               <Dialog.Content
+                aria-describedby={undefined}
                 className={`${roboto.className} fixed left-1/2 top-1/2 z-50 w-[min(94vw,44rem)] max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/25 bg-[#0C4506]/70 p-8 text-[#f5f0e8] shadow-xl outline-none sm:p-10`}
               >
                 <Dialog.Title className="text-2xl font-bold tracking-[-0.03em] text-white sm:text-3xl">
