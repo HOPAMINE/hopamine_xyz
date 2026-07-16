@@ -6,10 +6,9 @@ export const NAV_LINKS = [
   { href: "/events", label: "Events" },
 ] as const;
 
-/** Full mobile drawer: portal links + Claim (mobile-only) + Profile dashboard. */
+/** Full mobile drawer: portal links + Profile dashboard. */
 export const MOBILE_MENU_LINKS = [
   ...NAV_LINKS,
-  { href: "/claim", label: "Claim" },
   { href: "/dashboard", label: "Profile" },
 ] as const;
 

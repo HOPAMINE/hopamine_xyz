@@ -529,23 +529,20 @@ function LeftProfilePanel({
   user,
   readOnly = false,
   showFirstNameOnCard = false,
-  isOnline = false,
 }: {
   user: ProfileUser;
   readOnly?: boolean;
   showFirstNameOnCard?: boolean;
-  isOnline?: boolean;
 }) {
   const { signOut } = useClerk();
   const updateProfile = useMutation(api.users.updateProfile);
-  const setOffline = useMutation(api.presence.setOffline);
   const initials = getInitials(user.name);
 
   return (
     <aside className="flex w-full shrink-0 flex-col gap-4 overflow-hidden rounded-[28px] bg-white px-5 py-5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] lg:w-[387px] lg:rounded-[40px] lg:px-6">
       {/* Identity row: avatar + name + location */}
       <div className="flex items-end gap-[15px]">
-        <div className="relative shrink-0" style={{ width: AV_SIZE, height: AV_SIZE }}>
+        <div className="shrink-0" style={{ width: AV_SIZE, height: AV_SIZE }}>
           <div className="w-full h-full rounded-full overflow-hidden bg-[#0090d4] border-2 border-white flex items-center justify-center">
             {user.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -554,12 +551,6 @@ function LeftProfilePanel({
               <span className="font-serif text-xl font-semibold text-white">{initials}</span>
             )}
           </div>
-          {/* Presence dot — online/offline indicator */}
-          <span
-            className={`absolute rounded-full border-2 border-white ${isOnline ? "bg-[#00a6f3]" : "bg-neutral-300"}`}
-            style={{ width: 14, height: 14, right: 1, bottom: 3 }}
-            aria-label={isOnline ? "Online" : "Offline"}
-          />
         </div>
         <div className="min-w-0">
           <h1 className={`${robotoFlex.className} text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] text-neutral-900`}>
@@ -682,12 +673,7 @@ function LeftProfilePanel({
       {!readOnly ? (
         <button
           type="button"
-          onClick={async () => {
-            try {
-              await setOffline();
-            } catch {
-              // sign out regardless
-            }
+          onClick={() => {
             void signOut({ redirectUrl: "/" });
           }}
           className={logoutButtonClass}
@@ -1142,16 +1128,14 @@ export function ProfileTabContent({
   user,
   readOnly = false,
   showFirstNameOnCard = false,
-  isOnline = false,
 }: {
   user: ProfileUser;
   readOnly?: boolean;
   showFirstNameOnCard?: boolean;
-  isOnline?: boolean;
 }) {
   return (
     <div className="flex w-full flex-col items-stretch gap-4 lg:flex-row lg:gap-2.5">
-      <LeftProfilePanel user={user} readOnly={readOnly} showFirstNameOnCard={showFirstNameOnCard} isOnline={isOnline} />
+      <LeftProfilePanel user={user} readOnly={readOnly} showFirstNameOnCard={showFirstNameOnCard} />
       <RightPanel builderName={user.name} userId={user._id} readOnly={readOnly} />
     </div>
   );

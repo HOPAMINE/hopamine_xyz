@@ -68,3 +68,4 @@ convex/_generated/ai/ai-files.state.json
 
 # clerk configuration (can include secrets)
 /.clerk/
+.migration/

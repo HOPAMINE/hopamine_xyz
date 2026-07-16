@@ -765,6 +765,176 @@ const onboardingBackfillEntryValidator = v.object({
   discord: v.optional(v.string()),
 });
 
+/**
+ * Merge a duplicate users row into the keep row: reassign FKs, then delete the duplicate.
+ * Intended for prod cutover cleanup when the same email/clerkId had two Convex rows.
+ */
+export const mergeDuplicateUser = internalMutation({
+  args: {
+    keepUserId: v.id("users"),
+    dropUserId: v.id("users"),
+  },
+  returns: v.object({
+    keepUserId: v.id("users"),
+    dropUserId: v.id("users"),
+    reassigned: v.object({
+      projects: v.number(),
+      projectMembers: v.number(),
+      projectInvitesInvited: v.number(),
+      projectInvitesInvitedBy: v.number(),
+      projectJoinRequests: v.number(),
+      hackathonClaims: v.number(),
+      hackathonParticipations: v.number(),
+      badges: v.number(),
+    }),
+    deleted: v.object({
+      presence: v.number(),
+      duplicateProjectMembers: v.number(),
+      dropUser: v.boolean(),
+    }),
+  }),
+  handler: async (ctx, args) => {
+    if (args.keepUserId === args.dropUserId) {
+      throw new Error("keepUserId and dropUserId must differ");
+    }
+
+    const keep = await ctx.db.get("users", args.keepUserId);
+    const drop = await ctx.db.get("users", args.dropUserId);
+    if (!keep) throw new Error("keep user not found");
+    if (!drop) throw new Error("drop user not found");
+    if (!keep.onboardingCompletedAt) {
+      throw new Error("keep user must be onboarded");
+    }
+    if (drop.onboardingCompletedAt) {
+      throw new Error("drop user is onboarded — refusing to merge");
+    }
+    if ((keep.email || "").toLowerCase() !== (drop.email || "").toLowerCase()) {
+      throw new Error("emails do not match");
+    }
+
+    const reassigned = {
+      projects: 0,
+      projectMembers: 0,
+      projectInvitesInvited: 0,
+      projectInvitesInvitedBy: 0,
+      projectJoinRequests: 0,
+      hackathonClaims: 0,
+      hackathonParticipations: 0,
+      badges: 0,
+    };
+    const deleted = {
+      presence: 0,
+      duplicateProjectMembers: 0,
+      dropUser: false,
+    };
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_user", (q) => q.eq("userId", args.dropUserId))
+      .collect();
+    for (const project of projects) {
+      await ctx.db.patch(project._id, { userId: args.keepUserId });
+      reassigned.projects += 1;
+    }
+
+    const dropMembers = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_user", (q) => q.eq("userId", args.dropUserId))
+      .collect();
+    for (const member of dropMembers) {
+      const existing = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project_and_user", (q) =>
+          q.eq("projectId", member.projectId).eq("userId", args.keepUserId),
+        )
+        .unique();
+      if (existing) {
+        await ctx.db.delete(member._id);
+        deleted.duplicateProjectMembers += 1;
+      } else {
+        await ctx.db.patch(member._id, { userId: args.keepUserId });
+        reassigned.projectMembers += 1;
+      }
+    }
+
+    const invitesAsInvitee = await ctx.db
+      .query("projectInvites")
+      .withIndex("by_invited_user_and_status", (q) =>
+        q.eq("invitedUserId", args.dropUserId),
+      )
+      .collect();
+    for (const invite of invitesAsInvitee) {
+      await ctx.db.patch(invite._id, { invitedUserId: args.keepUserId });
+      reassigned.projectInvitesInvited += 1;
+    }
+
+    // invitedByUserId has no dedicated index — scan invitees of keep/drop projects is heavy;
+    // full-table scan is OK at ~100 users for a one-off merge.
+    const allInvites = await ctx.db.query("projectInvites").collect();
+    for (const invite of allInvites) {
+      if (invite.invitedByUserId === args.dropUserId) {
+        await ctx.db.patch(invite._id, { invitedByUserId: args.keepUserId });
+        reassigned.projectInvitesInvitedBy += 1;
+      }
+    }
+
+    const joinRequests = await ctx.db
+      .query("projectJoinRequests")
+      .withIndex("by_requester", (q) => q.eq("requesterUserId", args.dropUserId))
+      .collect();
+    for (const request of joinRequests) {
+      await ctx.db.patch(request._id, { requesterUserId: args.keepUserId });
+      reassigned.projectJoinRequests += 1;
+    }
+
+    const claims = await ctx.db
+      .query("hackathonClaims")
+      .withIndex("by_user", (q) => q.eq("userId", args.dropUserId))
+      .collect();
+    for (const claim of claims) {
+      await ctx.db.patch(claim._id, { userId: args.keepUserId });
+      reassigned.hackathonClaims += 1;
+    }
+
+    const participations = await ctx.db
+      .query("hackathonParticipations")
+      .withIndex("by_user", (q) => q.eq("userId", args.dropUserId))
+      .collect();
+    for (const participation of participations) {
+      await ctx.db.patch(participation._id, { userId: args.keepUserId });
+      reassigned.hackathonParticipations += 1;
+    }
+
+    const badges = await ctx.db
+      .query("badges")
+      .withIndex("by_user", (q) => q.eq("userId", args.dropUserId))
+      .collect();
+    for (const badge of badges) {
+      await ctx.db.patch(badge._id, { userId: args.keepUserId });
+      reassigned.badges += 1;
+    }
+
+    const presenceRows = await ctx.db
+      .query("presence")
+      .withIndex("by_user", (q) => q.eq("userId", args.dropUserId))
+      .collect();
+    for (const row of presenceRows) {
+      await ctx.db.delete(row._id);
+      deleted.presence += 1;
+    }
+
+    await ctx.db.delete(args.dropUserId);
+    deleted.dropUser = true;
+
+    return {
+      keepUserId: args.keepUserId,
+      dropUserId: args.dropUserId,
+      reassigned,
+      deleted,
+    };
+  },
+});
+
 /** One-off recovery for onboarding submissions rejected before bio was in the validator. */
 export const backfillFailedOnboarding = internalMutation({
   args: {

@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
+import { robotoFlex } from "../fonts";
 
 export type NavLinkItem = { href: string; label: string };
 
@@ -62,16 +63,16 @@ export function MobileMenu({
             </button>
           </Dialog.Close>
 
-          <div className="flex min-h-0 flex-1 flex-col justify-end px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(2rem,env(safe-area-inset-bottom))] pr-[max(1.25rem,env(safe-area-inset-right))] pt-[max(5rem,env(safe-area-inset-top))]">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(2rem,env(safe-area-inset-bottom))] pr-[max(1.25rem,env(safe-area-inset-right))] pt-[max(5rem,env(safe-area-inset-top))]">
             <nav
-              className="flex flex-col gap-6 text-white"
+              className="flex flex-col items-center gap-6 text-center text-white"
               aria-label="Mobile primary"
             >
               {links.map(({ href, label }) => (
                 <Dialog.Close asChild key={label}>
                   <Link
                     href={href}
-                    className="text-left font-serif text-4xl font-bold leading-[1.05] tracking-[-0.04em] transition-opacity hover:opacity-85 sm:text-5xl"
+                    className={`${robotoFlex.className} text-4xl font-semibold leading-[1.08] tracking-[-0.03em] transition-opacity hover:opacity-85 sm:text-5xl`}
                   >
                     {label}
                   </Link>

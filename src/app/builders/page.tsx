@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useConvex, useQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
 import { PORTAL_MAIN_PAD } from "@/lib/layoutConstants";
 import { robotoMono } from "../../../fonts";
 import { BuilderCard } from "./BuilderCard";
@@ -48,11 +47,7 @@ function seededMosaic(seedStr: string) {
 
 export default function BuildersPage() {
   const builders = useQuery(api.users.listBuilders);
-  const convex = useConvex();
-  const [presenceMap, setPresenceMap] = useState<
-    Map<Id<"users">, { isOnline: boolean; updatedAt: number }>
-  >(new Map());
-  const presenceFetchedRef = useRef(false);
+  const [search, setSearch] = useState("");
 
   const mosaics = useMemo(() => {
     const map: Record<string, { rot: number; triangles: TriDatum[] }> = {};
@@ -64,31 +59,16 @@ export default function BuildersPage() {
     return map;
   }, [builders]);
 
-  useEffect(() => {
-    if (!builders || presenceFetchedRef.current) return;
-    presenceFetchedRef.current = true;
-    const userIds = builders.map((b) => b._id);
-    convex.query(api.presence.getForUsers, { userIds }).then((presenceList) => {
-      const map = new Map<Id<"users">, { isOnline: boolean; updatedAt: number }>();
-      for (const p of presenceList) {
-        map.set(p.userId, { isOnline: p.isOnline, updatedAt: p.updatedAt });
-      }
-      setPresenceMap(map);
+  const filteredBuilders = useMemo(() => {
+    if (!builders) return undefined;
+    const query = search.trim().toLowerCase();
+    if (!query) return builders;
+    return builders.filter((builder) => {
+      const name = builder.name.toLowerCase();
+      const username = (builder.username ?? "").toLowerCase();
+      return name.includes(query) || username.includes(query);
     });
-  }, [builders, convex]);
-
-  // Online users first, then most recently active. Users with no presence
-  // record (e.g. created after this fetch) fall to the bottom (updatedAt 0).
-  const sortedBuilders = builders
-    ? [...builders].sort((a, b) => {
-        const ap = presenceMap.get(a._id);
-        const bp = presenceMap.get(b._id);
-        const aOnline = ap?.isOnline ?? false;
-        const bOnline = bp?.isOnline ?? false;
-        if (aOnline !== bOnline) return aOnline ? -1 : 1;
-        return (bp?.updatedAt ?? 0) - (ap?.updatedAt ?? 0);
-      })
-    : undefined;
+  }, [builders, search]);
 
   return (
     <main className={`min-h-dvh w-full ${PORTAL_MAIN_PAD} pb-16 md:pb-24`}>
@@ -97,15 +77,35 @@ export default function BuildersPage() {
           <h2 id="builders-grid-heading" className="sr-only">
             Builder directory
           </h2>
-          {sortedBuilders === undefined ? (
+
+          <div className="mb-6">
+            <label htmlFor="builders-search" className="sr-only">
+              Search people by name or username
+            </label>
+            <input
+              id="builders-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or username…"
+              autoComplete="off"
+              className={`${robotoMono.className} w-full rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm text-neutral-900 shadow-[0_2px_12px_rgba(0,0,0,0.06)] outline-none transition-[border-color,box-shadow] placeholder:text-neutral-400 focus:border-accent-navbar focus:shadow-[0_2px_16px_rgba(0,166,243,0.18)]`}
+            />
+          </div>
+
+          {filteredBuilders === undefined ? (
             <p className={`${robotoMono.className} text-sm text-neutral-500`}>Loading builders…</p>
-          ) : sortedBuilders.length === 0 ? (
+          ) : builders?.length === 0 ? (
             <p className={`${robotoMono.className} text-sm text-neutral-500`}>
               No builders yet. Complete onboarding to appear here.
             </p>
+          ) : filteredBuilders.length === 0 ? (
+            <p className={`${robotoMono.className} text-sm text-neutral-500`}>
+              No people match “{search.trim()}”.
+            </p>
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>article]:min-w-0">
-              {sortedBuilders.map((builder) => {
+              {filteredBuilders.map((builder) => {
                 const { rot, triangles } = mosaics[builder._id];
                 return (
                   <BuilderCard
@@ -117,7 +117,6 @@ export default function BuildersPage() {
                     bio={builder.bio}
                     skills={builder.skills ?? []}
                     interests={builder.interests ?? []}
-                    isOnline={presenceMap.get(builder._id)?.isOnline ?? false}
                     rot={rot}
                     triangles={triangles}
                   />

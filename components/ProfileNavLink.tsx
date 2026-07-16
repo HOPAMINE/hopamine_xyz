@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
 import { usePathname } from "next/navigation";
 
+import { api } from "../convex/_generated/api";
 import { isGreenNavRoute } from "@/lib/navRoutes";
 
 function UserCircleIcon({ className }: { className?: string }) {
@@ -46,6 +48,7 @@ export function ProfileNavLink({
   showLabel?: boolean;
 }) {
   const { user, isLoaded } = useUser();
+  const convexUser = useQuery(api.users.getCurrentUser, isLoaded && user ? {} : "skip");
   const pathname = usePathname();
   const isGreenNav = isGreenNavRoute(pathname);
   const getStartedClass = isGreenNav ? getStartedEvents : getStartedMarketing;
@@ -73,7 +76,8 @@ export function ProfileNavLink({
     );
   }
 
-  const label = `Account dashboard (${user.primaryEmailAddress?.emailAddress ?? "signed in"})`;
+  const avatarUrl = convexUser?.avatarUrl?.trim() || "";
+  const label = `Account dashboard (${convexUser?.email ?? user.primaryEmailAddress?.emailAddress ?? "signed in"})`;
 
   return (
     <Link
@@ -84,9 +88,9 @@ export function ProfileNavLink({
     >
       {showLabel ? <span>Profile</span> : null}
       <span className={profileAvatar} aria-hidden={showLabel || undefined}>
-        {user.imageUrl ? (
+        {avatarUrl ? (
           <Image
-            src={user.imageUrl}
+            src={avatarUrl}
             alt=""
             width={48}
             height={48}

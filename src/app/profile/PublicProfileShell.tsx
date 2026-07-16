@@ -9,7 +9,6 @@ type PublicProfileShellProps = {
   isRedirecting?: boolean;
   invalidMessage?: string;
   notFoundMessage?: string;
-  isOnline?: boolean;
 };
 
 export function PublicProfileShell({
@@ -17,7 +16,6 @@ export function PublicProfileShell({
   isRedirecting = false,
   invalidMessage = "Profile not found.",
   notFoundMessage = "No profile found.",
-  isOnline = false,
 }: PublicProfileShellProps) {
   if (isRedirecting) {
     return (
@@ -55,7 +53,7 @@ export function PublicProfileShell({
     >
       <div className="mx-auto w-full">
         <section className="w-full" aria-label={`${profile.name} profile`}>
-          <ProfileTabContent user={profile} readOnly isOnline={isOnline} />
+          <ProfileTabContent user={profile} readOnly />
         </section>
       </div>
     </main>

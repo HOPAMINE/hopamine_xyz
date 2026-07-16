@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { isPortalRoute, isProjectsRoute, isGreenNavRoute } from "@/lib/navRoutes";
@@ -20,11 +20,8 @@ const ONBOARDING_EXEMPT = ["/onboard", "/sign-in", "/sign-up", "/sso-callback", 
 function UserSyncInner() {
   const { user, isLoaded: isUserLoaded } = useUser();
   const { isAuthenticated } = useConvexAuth();
-  const { getToken } = useAuth();
   const getOrCreateUser = useMutation(api.users.getOrCreate);
   const ensureUsername = useMutation(api.users.ensureUsername);
-  const setOnline = useMutation(api.presence.setOnline);
-  const setOffline = useMutation(api.presence.setOffline);
   const existing = useQuery(
     api.users.getCurrentUser,
     isUserLoaded && user ? {} : "skip",
@@ -32,8 +29,6 @@ function UserSyncInner() {
   const pathname = usePathname();
   const router = useRouter();
   const creatingRef = useRef(false);
-  const tokenRef = useRef<string | null>(null);
-  const didSetOnlineRef = useRef(false);
 
   // Create the Convex user row once a Clerk session exists AND the Convex auth
   // token is ready. Gating on `isAuthenticated` (rather than firing as soon as
@@ -75,55 +70,6 @@ function UserSyncInner() {
     if (ONBOARDING_EXEMPT.some((p) => pathname.startsWith(p))) return;
     router.replace(getOnboardingPath(pathname));
   }, [existing, pathname, router]);
-
-  // Mark online once when user data first becomes available
-  useEffect(() => {
-    if (!existing || didSetOnlineRef.current) return;
-    didSetOnlineRef.current = true;
-    void setOnline();
-  }, [existing, setOnline]);
-
-  // Keep tokenRef fresh and fire keepalive offline on tab close
-  useEffect(() => {
-    if (!existing) return;
-
-    const convexSiteUrl = (process.env.NEXT_PUBLIC_CONVEX_URL ?? "")
-      .replace(".convex.cloud", ".convex.site");
-
-    const refreshToken = async () => {
-      const token = await getToken({ template: "convex" });
-      tokenRef.current = token ?? null;
-    };
-
-    void refreshToken();
-
-    const handleVisible = () => {
-      if (document.visibilityState === "visible") void refreshToken();
-    };
-
-    const handlePageHide = () => {
-      // Primary: WebSocket mutation (Convex connection is still open during pagehide)
-      void setOffline();
-      // Backup: HTTP keepalive for when the WebSocket is already gone
-      if (tokenRef.current && convexSiteUrl) {
-        void fetch(`${convexSiteUrl}/presence/offline`, {
-          method: "POST",
-          keepalive: true,
-          headers: { Authorization: `Bearer ${tokenRef.current}` },
-        });
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisible);
-    window.addEventListener("focus", handleVisible);
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisible);
-      window.removeEventListener("focus", handleVisible);
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, [existing, getToken, setOffline]);
 
   return null;
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useConvex, useQuery } from "convex/react";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useQuery } from "convex/react";
+import { Suspense } from "react";
 import { api } from "../../../convex/_generated/api";
 import { NAV_ALIGN_PAD } from "@/lib/layoutConstants";
 import { robotoFlex, robotoMono } from "../../../fonts";
@@ -11,21 +11,9 @@ import { ProfileTabContent } from "./ProfileTab";
 function ProfilePageContent() {
   const { isLoaded: clerkLoaded } = useUser();
   const convexProfile = useQuery(api.users.getCurrentUser, {});
-  const convex = useConvex();
 
   const convexLoading = convexProfile === undefined;
   const convexUser = convexProfile ?? null;
-
-  const [isOnline, setIsOnline] = useState(false);
-  const presenceFetchedRef = useRef(false);
-
-  useEffect(() => {
-    if (!convexUser || presenceFetchedRef.current) return;
-    presenceFetchedRef.current = true;
-    convex.query(api.presence.getByUser, { userId: convexUser._id }).then((result) => {
-      setIsOnline(result?.isOnline ?? false);
-    });
-  }, [convexUser, convex]);
 
   if (!clerkLoaded || convexLoading) {
     return (
@@ -50,7 +38,7 @@ function ProfilePageContent() {
               No profile found yet. Navigate the app while signed in — it syncs automatically.
             </p>
           ) : (
-            <ProfileTabContent user={convexUser} showFirstNameOnCard isOnline={isOnline} />
+            <ProfileTabContent user={convexUser} showFirstNameOnCard />
           )}
         </section>
       </div>
